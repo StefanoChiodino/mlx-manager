@@ -222,6 +222,55 @@ The app MUST support restarting the server (stop then start with the same config
 
 ---
 
+### Requirement: Server Control — PID Recovery
+
+The app MUST persist the server process PID to `~/.config/mlx-manager/server.pid` and
+recover running state across app restarts to prevent accidental double-launch.
+
+#### Scenario: PID file written on start
+
+- GIVEN a server is started successfully
+- WHEN the process launches
+- THEN the PID MUST be written to `~/.config/mlx-manager/server.pid` as a decimal string
+
+#### Scenario: PID file deleted on stop
+
+- GIVEN the server is running
+- WHEN the user clicks Stop (or the process exits)
+- THEN the PID file MUST be deleted
+
+#### Scenario: Recovery — process alive
+
+- GIVEN the PID file exists and the process is still alive (`kill(pid, 0) == 0`)
+- WHEN the app launches
+- THEN it MUST adopt the process, show idle state, and start log tailing
+
+#### Scenario: Recovery — stale PID file
+
+- GIVEN the PID file exists but the process is dead
+- WHEN the app launches
+- THEN it MUST delete the stale PID file and start in offline state
+
+#### Scenario: Recovery — no PID file
+
+- GIVEN no PID file exists
+- WHEN the app launches
+- THEN it MUST start in offline state (normal behaviour)
+
+#### Scenario: Adopted process — stop
+
+- GIVEN the app adopted an external process
+- WHEN the user clicks Stop
+- THEN the app MUST send SIGTERM to the adopted PID and transition to offline
+
+#### Scenario: Adopted process — start guard
+
+- GIVEN the app adopted an external process (or a launched process is running)
+- WHEN the user clicks Start
+- THEN it MUST throw `ServerError.alreadyRunning`
+
+---
+
 ### Requirement: Config Presets
 
 The app MUST load config presets from a bundled `presets.yaml` file.
@@ -303,3 +352,141 @@ The app MUST tail the MLX server log file in real-time, parse new lines via `Log
 - GIVEN the log file does not exist
 - WHEN `start()` is called
 - THEN it MUST be a no-op (no crash, no watching started)
+
+---
+
+### Requirement: Request Recording
+
+`ServerState` MUST track completed requests as `RequestRecord` values (startedAt, completedAt,
+tokens, computed duration). `AppDelegate` drains `serverState.completedRequest` after each
+event and appends to a history array (capped at 500).
+
+#### Scenario: KV Caches completion produces a record
+
+- GIVEN a progress event was received (setting `requestStartedAt`)
+- WHEN a `KV Caches:` completion event arrives
+- THEN `serverState.completedRequest` MUST be non-nil with the KV line's token count
+
+#### Scenario: HTTP 200 completion produces a record
+
+- GIVEN a progress event was received
+- WHEN a `POST 200` completion event arrives
+- THEN `serverState.completedRequest` MUST be non-nil
+
+#### Scenario: Completion with no prior progress
+
+- GIVEN no progress events have been received since the last completion
+- WHEN a completion signal arrives
+- THEN `serverState.completedRequest` MUST be nil (no request to record)
+
+---
+
+### Requirement: User Preset Persistence
+
+The app MUST support user-editable presets persisted to `~/.config/mlx-manager/presets.yaml`.
+`UserPresetStore.load()` reads the user file if present, otherwise falls back to bundled presets.
+`UserPresetStore.save(_:)` writes presets to the user file via Yams.
+
+#### Scenario: Load with no user file
+
+- GIVEN `~/.config/mlx-manager/presets.yaml` does not exist
+- WHEN `UserPresetStore.load()` is called
+- THEN it MUST return the 4 bundled presets
+
+#### Scenario: Save and reload
+
+- GIVEN presets are saved via `UserPresetStore.save(_:)`
+- WHEN `UserPresetStore.load()` is called
+- THEN it MUST return the saved presets
+
+---
+
+### Requirement: App Settings
+
+The app MUST persist user settings to `~/.config/mlx-manager/settings.json`.
+`AppSettings` has two fields: `ramGraphEnabled` (default `false`) and `ramPollInterval`
+(default `5`, allowed values: 2, 5, 10 seconds).
+
+---
+
+### Requirement: RAM Monitoring
+
+The app MUST poll the server process's resident memory via `proc_pidinfo` at a configurable
+interval, emitting `RAMSample` values (timestamp, GB) via callback.
+
+#### Scenario: Polling emits samples
+
+- GIVEN a `RAMPoller` is started with a valid PID
+- WHEN the timer fires
+- THEN `onSample` MUST be called with a `RAMSample` containing the process RSS in GB
+
+---
+
+### Requirement: UI Windows
+
+The app MUST provide four windows accessible from the status bar menu:
+
+1. **Log Viewer** — scrolling text view with colour-coded log lines, clear button, 10k line cap
+2. **Request History** — bar chart of completed requests (height = tokens, opacity = duration)
+3. **RAM Graph** — line chart of `RAMSample` values with total RAM dashed line (only shown when `ramGraphEnabled`)
+4. **Settings** — tabbed window (Presets table + General settings), with environment install section
+
+---
+
+### Requirement: Menu Structure
+
+The status bar menu MUST contain (in order):
+
+- Preset header ("Start with:" when offline, "Switch to:" when running)
+- Preset items (disabled + "(env missing)" suffix when `pythonPath` absent)
+- Stop (only when running)
+- Show Log, Request History
+- RAM Graph (only when `ramGraphEnabled`)
+- Settings…
+- Quit
+
+`StatusBarController` accepts a `fileExists: (String) -> Bool` dependency to check preset availability.
+
+---
+
+### Requirement: Environment Bootstrap
+
+On first launch, the app MUST auto-detect a missing Python environment and install it.
+
+#### Scenario: Environment missing on launch
+
+- GIVEN `~/.mlx-manager/venv/bin/python` does not exist
+- WHEN the app launches
+- THEN it MUST show "Installing environment…" in the menu and run `EnvironmentBootstrapper`
+
+#### Scenario: Environment already present
+
+- GIVEN `~/.mlx-manager/venv/bin/python` exists
+- WHEN the app launches
+- THEN the bootstrap step MUST be skipped and presets shown normally
+
+---
+
+### Requirement: UV-Based Environment Bootstrapping
+
+The environment installer MUST use `uv` (not `python3 -m venv` / `pip`) for faster,
+version-pinned environments.
+
+#### Scenario: uv found locally
+
+- GIVEN `uv` exists at `~/.local/bin/uv` or `/opt/homebrew/bin/uv`
+- WHEN the bootstrapper runs
+- THEN it MUST skip the `uv` install step and proceed to `uv venv` + `uv pip install`
+
+#### Scenario: uv not found
+
+- GIVEN `uv` is not found at any candidate path
+- WHEN the bootstrapper runs
+- THEN it MUST install `uv` via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- AND then proceed to `uv venv` + `uv pip install`
+
+#### Scenario: Install steps
+
+- The bootstrapper MUST run:
+  1. `uv venv ~/.mlx-manager/venv --python 3.12`
+  2. `uv pip install mlx-lm --python <venvPython>`

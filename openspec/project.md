@@ -69,6 +69,8 @@ MLXManager.app
 │   ├── StatusBarController.swift  # NSStatusItem management
 │   ├── LogParser.swift         # Parse progress/KV lines from server logs
 │   ├── ServerManager.swift     # Start/stop/restart MLX server process
+│   ├── PIDFile.swift           # PID file read/write/delete + liveness check
+│   ├── PIDRecovery.swift       # Recover running server on app relaunch
 │   ├── ConfigLoader.swift      # Load YAML presets
 │   └── Models/
 │       ├── Progress.swift      # Progress value type
@@ -84,6 +86,7 @@ MLXManager.app
 - Server log: `~/repos/mlx/Logs/server.log`
 - Status output: `~/.mlx-status.json`
 - Config presets: bundled in app at `Resources/presets.yaml`
+- PID file: `~/.config/mlx-manager/server.pid`
 
 ## Coding Standards
 

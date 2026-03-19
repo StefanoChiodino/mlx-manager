@@ -21,22 +21,10 @@ StatusBarController    (extended)    AppDelegate                (extended)
 
 ### Status bar icon
 
-The current `progressBar(fraction:)` produces `▓▓▓░░░░░░░`. We extend the title string
-to append a percentage: `▓▓▓░░░░░░░ 32%`. No visual change when idle or offline.
-
-When `AppSettings.progressStyle == .pie`, the icon uses Unicode pie glyphs instead:
-`○ ◔ ◑ ◕ ●` mapped by quintile (0–20%, 20–40%, 40–60%, 60–80%, 80–100%).
-
-### Status menu item
-
-`StatusBarController` gains a `statusText: String` computed from state, rendered as a
-disabled (non-clickable) `NSMenuItem` at the top of the menu:
-
-| State | Text |
-|-------|------|
-| Offline | `Server: Offline` |
-| Idle | `Server: Idle` |
-| Processing | `27,611 / 41,061  (67%)` |
+> **Superseded by 009-progress-arc**: The glyph-based progress bar (`▓▓▓░░░░░░░`) and
+> pie glyphs (`○ ◔ ◑ ◕ ●`) were replaced by a native Core Graphics `ArcProgressView`
+> rendering a clockwise-filling arc + percentage label. See `StatusBarDisplayState` and
+> `ArcProgressView` in the codebase. The `ProgressStyle` enum no longer exists.
 
 ---
 
@@ -44,17 +32,14 @@ disabled (non-clickable) `NSMenuItem` at the top of the menu:
 
 ```swift
 // MLXManager layer — no AppKit dependency
-public enum ProgressStyle: String, Codable {
-    case bar   // ▓▓▓░░░░░░░ 32%
-    case pie   // ◑
-}
-
 public struct AppSettings: Codable, Equatable {
-    public var progressStyle: ProgressStyle = .bar
     public var ramGraphEnabled: Bool = false
     public var ramPollInterval: Int = 5  // seconds: 2, 5, or 10
 }
 ```
+
+> **Note**: `ProgressStyle` was removed — 009-progress-arc replaced all glyph styles
+> with a single native arc renderer.
 
 Persisted to `~/.config/mlx-manager/settings.json` by `AppDelegate` (simple
 `JSONEncoder`/`JSONDecoder`, no dedicated class needed — settings is small).
@@ -191,7 +176,6 @@ Colours: `NSColor.labelColor` (progress/other), `.systemBlue` (kvCaches),
   - On completion: alert asking "Update all presets to use this python?"
 
 **General tab:**
-- Progress style: `NSPopUpButton` (Block bar | Pie)
 - RAM graph: `NSButton` checkbox "Enable RAM graph"
 - RAM poll interval: `NSPopUpButton` (2s | 5s | 10s), enabled only when RAM graph is on
 - "Save" `NSButton` at bottom-right — persists settings and presets, rebuilds menu,
@@ -199,22 +183,25 @@ Colours: `NSColor.labelColor` (progress/other), `.systemBlue` (kvCaches),
 
 ### EnvironmentInstaller
 
+> **Updated by 011-uv-env**: The original `python3 -m venv` + `pip install` approach
+> was replaced by `uv`-based bootstrapping. `EnvironmentInstaller` is now a thin adapter
+> over `EnvironmentBootstrapper`, which uses `UVLocator` → `CommandRunner` protocol.
+
 ```swift
-// App layer
+// App layer — thin adapter
 final class EnvironmentInstaller {
     var onOutput: ((String) -> Void)?
     var onComplete: ((Bool) -> Void)?    // Bool = success
 
-    func install()   // async, streams output via onOutput
-    func cancel()
+    func install()   // delegates to EnvironmentBootstrapper
+    func cancel()    // best-effort
 }
 ```
 
-Steps:
-1. `python3 -m venv ~/.mlx-manager/venv`
-2. `~/.mlx-manager/venv/bin/pip install mlx-lm`
-
-Uses `Process` with `Pipe`, reads `standardOutput` async, calls `onOutput` on main queue.
+Steps (via `EnvironmentBootstrapper`):
+1. Locate `uv` at `~/.local/bin/uv` or `/opt/homebrew/bin/uv` (install via `curl` if missing)
+2. `uv venv ~/.mlx-manager/venv --python 3.12`
+3. `uv pip install mlx-lm --python <venvPython>`
 
 ---
 
