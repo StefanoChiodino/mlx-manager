@@ -264,12 +264,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let presets = try? UserPresetStore.load(from: UserPresetStore.defaultURL) {
             return presets.map { resolvedPythonPath($0) }
         }
-        guard let url = Bundle.module.url(forResource: "presets", withExtension: "yaml"),
+        guard let url = bundledPresetsURL(),
               let yaml = try? String(contentsOf: url, encoding: .utf8),
               let presets = try? ConfigLoader.load(yaml: yaml) else {
             return []
         }
         return presets.map { resolvedPythonPath($0) }
+    }
+
+    /// Returns the URL for the bundled presets.yaml.
+    /// Checks Bundle.module first (SPM dev build), then Bundle.main (.app bundle).
+    private func bundledPresetsURL() -> URL? {
+        if let url = Bundle.module.url(forResource: "presets", withExtension: "yaml") { return url }
+        return Bundle.main.url(forResource: "presets", withExtension: "yaml")
     }
 
     private func loadSettings() -> AppSettings {
