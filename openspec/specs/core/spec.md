@@ -226,3 +226,57 @@ Four presets MUST be present: 4-bit 40k, 4-bit 80k, 8-bit 40k, 8-bit 80k.
 - GIVEN the 4-bit 40k preset is loaded
 - THEN it MUST include `--chat-template-args '{"enable_thinking":false}'` in its args
 - AND `--trust-remote-code`
+
+---
+
+### Requirement: Log Tailing
+
+The app MUST tail the MLX server log file in real-time, parse new lines via `LogParser`, and emit `LogEvent` values to a caller-provided callback.
+
+#### Scenario: Start tailing
+
+- GIVEN a valid log file path
+- WHEN `start()` is called
+- THEN the tailer MUST seek to the end of the file and begin watching for changes
+
+#### Scenario: New log lines
+
+- GIVEN the tailer is running
+- WHEN new lines are appended to the log file
+- THEN each line MUST be parsed via `LogParser` and matching events emitted via the callback
+
+#### Scenario: Non-matching lines
+
+- GIVEN a non-parseable line is appended
+- WHEN the tailer reads it
+- THEN no event MUST be emitted
+
+#### Scenario: Multiple lines in one write
+
+- GIVEN multiple lines are appended atomically
+- WHEN the tailer reads them
+- THEN events MUST be emitted in the order the lines appear
+
+#### Scenario: Partial lines
+
+- GIVEN data is appended without a trailing newline
+- WHEN the tailer reads it
+- THEN the partial content MUST be buffered until a newline arrives
+
+#### Scenario: File truncation
+
+- GIVEN the log file is truncated (e.g. log rotation)
+- WHEN the tailer detects the file is shorter than the last read offset
+- THEN it MUST reset to offset 0 and read from the beginning
+
+#### Scenario: Stop tailing
+
+- GIVEN the tailer is running
+- WHEN `stop()` is called
+- THEN the file watcher MUST be stopped and resources released
+
+#### Scenario: File not found
+
+- GIVEN the log file does not exist
+- WHEN `start()` is called
+- THEN it MUST be a no-op (no crash, no watching started)
