@@ -215,6 +215,48 @@ struct StatusBarControllerTests {
         #expect(!titles.contains("Start with:"))
     }
 
+    // MARK: - Environment install state
+
+    @Test("environmentInstallStarted shows installing item and hides presets")
+    func test_environmentInstallStarted_showsInstallingItem() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig(name: "4-bit 40k", model: "m", maxTokens: 40960, extraArgs: [], pythonPath: "/p")
+        let controller = StatusBarController(
+            view: view, presets: [preset],
+            onStart: { _ in }, onStop: {},
+            fileExists: { _ in false }
+        )
+        controller.environmentInstallStarted()
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Installing environment…"))
+        #expect(!titles.contains("4-bit 40k"))
+    }
+
+    @Test("environmentInstallStarted item is not selectable")
+    func test_environmentInstallStarted_itemIsDisabled() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.environmentInstallStarted()
+        let item = view.menuItems.first(where: { $0.title == "Installing environment…" })
+        #expect(item?.enabled == false)
+    }
+
+    @Test("environmentInstallFinished shows presets again")
+    func test_environmentInstallFinished_showsPresets() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig(name: "4-bit 40k", model: "m", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let controller = StatusBarController(
+            view: view, presets: [preset],
+            onStart: { _ in }, onStop: {},
+            fileExists: { _ in true }
+        )
+        controller.environmentInstallStarted()
+        controller.environmentInstallFinished()
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("4-bit 40k"))
+        #expect(!titles.contains("Installing environment…"))
+    }
+
     // MARK: - Helpers
 
     private func makeState(status: ServerStatus, current: Int? = nil, total: Int? = nil) -> ServerState {

@@ -30,6 +30,7 @@ public final class StatusBarController {
     private let fileExists: (String) -> Bool
     private var running = false
     private var currentSettings: AppSettings
+    private var installingEnvironment = false
 
     // Callbacks for window actions — set by AppDelegate
     public var onShowLog: (() -> Void)?
@@ -90,6 +91,18 @@ public final class StatusBarController {
         }
     }
 
+    /// Called when background environment installation begins.
+    public func environmentInstallStarted() {
+        installingEnvironment = true
+        rebuildMenu(statusText: "Server: Offline")
+    }
+
+    /// Called when background environment installation completes (success or failure).
+    public func environmentInstallFinished() {
+        installingEnvironment = false
+        rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
+    }
+
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
@@ -122,21 +135,25 @@ public final class StatusBarController {
         items.append(StatusBarMenuItem(title: statusText, isEnabled: false))
         items.append(StatusBarMenuItem(title: "-", isSeparator: true))
 
-        // Preset section header
-        let presetHeader = running ? "Switch to:" : "Start with:"
-        items.append(StatusBarMenuItem(title: presetHeader, isEnabled: false))
+        if installingEnvironment {
+            items.append(StatusBarMenuItem(title: "Installing environment…", isEnabled: false))
+        } else {
+            // Preset section header
+            let presetHeader = running ? "Switch to:" : "Start with:"
+            items.append(StatusBarMenuItem(title: presetHeader, isEnabled: false))
 
-        // Preset items
-        for (i, preset) in presets.enumerated() {
-            let idx = i
-            let envReady = fileExists(preset.pythonPath)
-            let title = envReady ? preset.name : "\(preset.name)  (env missing)"
-            let enabled = !running && envReady
-            items.append(StatusBarMenuItem(
-                title: title,
-                isEnabled: enabled,
-                action: enabled ? { [weak self] in self?.selectPreset(at: idx) } : nil
-            ))
+            // Preset items
+            for (i, preset) in presets.enumerated() {
+                let idx = i
+                let envReady = fileExists(preset.pythonPath)
+                let title = envReady ? preset.name : "\(preset.name)  (env missing)"
+                let enabled = !running && envReady
+                items.append(StatusBarMenuItem(
+                    title: title,
+                    isEnabled: enabled,
+                    action: enabled ? { [weak self] in self?.selectPreset(at: idx) } : nil
+                ))
+            }
         }
 
         if running {
