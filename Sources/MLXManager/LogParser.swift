@@ -1,3 +1,5 @@
+import Foundation
+
 /// Events that can be extracted from a single MLX server log line.
 public enum LogEvent: Equatable {
     case progress(current: Int, total: Int, percentage: Double)
@@ -7,7 +9,48 @@ public enum LogEvent: Equatable {
 
 /// Pure log-line classifier. No state, no I/O.
 public enum LogParser {
+
+    // MARK: - Pre-compiled patterns
+
+    private static let progressRE = try! NSRegularExpression(
+        pattern: #"Prompt processing progress:\s*(\d+)/(\d+)"#
+    )
+    private static let kvCachesRE = try! NSRegularExpression(
+        pattern: #"KV Caches:\s*\d+\s+seq,\s*([\d.]+)\s+GB,.*?(\d+)\s+tokens"#
+    )
+    private static let httpCompletionRE = try! NSRegularExpression(
+        pattern: #"POST /v1/chat/completions HTTP/1\.1" 200"#
+    )
+
+    // MARK: - Public API
+
     public static func parse(line: String) -> LogEvent? {
+        let range = NSRange(line.startIndex..., in: line)
+
+        if let m = progressRE.firstMatch(in: line, range: range),
+           let r1 = Range(m.range(at: 1), in: line),
+           let r2 = Range(m.range(at: 2), in: line),
+           let current = Int(line[r1]),
+           let total = Int(line[r2]) {
+            return .progress(
+                current: current,
+                total: total,
+                percentage: (Double(current) / Double(total)) * 100
+            )
+        }
+
+        if let m = kvCachesRE.firstMatch(in: line, range: range),
+           let r1 = Range(m.range(at: 1), in: line),
+           let r2 = Range(m.range(at: 2), in: line),
+           let gpuGB = Double(line[r1]),
+           let tokens = Int(line[r2]) {
+            return .kvCaches(gpuGB: gpuGB, tokens: tokens)
+        }
+
+        if httpCompletionRE.firstMatch(in: line, range: range) != nil {
+            return .httpCompletion
+        }
+
         return nil
     }
 }
