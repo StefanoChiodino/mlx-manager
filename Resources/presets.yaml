@@ -1,0 +1,23 @@
+presets:
+  - name: "4-bit 40k"
+    model: "mlx-community/Qwen3.5-35B-A3B-4bit"
+    maxTokens: 40960
+    extraArgs:
+      - "--trust-remote-code"
+      - "--chat-template-args"
+      - '{"enable_thinking":false}'
+  - name: "4-bit 80k"
+    model: "mlx-community/Qwen3.5-35B-A3B-4bit"
+    maxTokens: 81920
+    extraArgs:
+      - "--trust-remote-code"
+  - name: "8-bit 40k"
+    model: "mlx-community/Qwen3.5-35B-A3B-8bit"
+    maxTokens: 40960
+    extraArgs:
+      - "--trust-remote-code"
+  - name: "8-bit 80k"
+    model: "mlx-community/Qwen3.5-35B-A3B-8bit"
+    maxTokens: 81920
+    extraArgs:
+      - "--trust-remote-code"
