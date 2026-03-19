@@ -10,6 +10,7 @@ final class ConfigLoaderTests: XCTestCase {
       - name: "4-bit 40k"
         model: "mlx-community/Qwen3.5-35B-A3B-4bit"
         maxTokens: 40960
+        pythonPath: "/custom/venv/bin/python3"
         extraArgs:
           - "--trust-remote-code"
           - "--chat-template-args"
@@ -17,16 +18,19 @@ final class ConfigLoaderTests: XCTestCase {
       - name: "4-bit 80k"
         model: "mlx-community/Qwen3.5-35B-A3B-4bit"
         maxTokens: 81920
+        pythonPath: "/custom/venv/bin/python3"
         extraArgs:
           - "--trust-remote-code"
       - name: "8-bit 40k"
         model: "mlx-community/Qwen3.5-35B-A3B-8bit"
         maxTokens: 40960
+        pythonPath: "/custom/venv/bin/python3"
         extraArgs:
           - "--trust-remote-code"
       - name: "8-bit 80k"
         model: "mlx-community/Qwen3.5-35B-A3B-8bit"
         maxTokens: 81920
+        pythonPath: "/custom/venv/bin/python3"
         extraArgs:
           - "--trust-remote-code"
     """
@@ -105,6 +109,28 @@ final class ConfigLoaderTests: XCTestCase {
         XCTAssertEqual(presets[1].maxTokens, 81920)
         XCTAssertEqual(presets[2].maxTokens, 40960)
         XCTAssertEqual(presets[3].maxTokens, 81920)
+    }
+
+    /// pythonPath is loaded from YAML
+    func test_load_allPresets_havePythonPath() throws {
+        let presets = try loadValid()
+        for preset in presets {
+            XCTAssertEqual(preset.pythonPath, "/custom/venv/bin/python3",
+                           "\(preset.name) has wrong pythonPath")
+        }
+    }
+
+    /// pythonPath is required
+    func test_load_missingPythonPathField_throwsMissingField() {
+        let yaml = """
+        presets:
+          - name: "broken"
+            model: "some-model"
+            maxTokens: 40960
+        """
+        XCTAssertThrowsError(try ConfigLoader.load(yaml: yaml)) { error in
+            XCTAssertEqual(error as? ConfigError, .missingField("pythonPath"))
+        }
     }
 
     // MARK: - Error cases

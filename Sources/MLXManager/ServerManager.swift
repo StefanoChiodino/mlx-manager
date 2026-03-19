@@ -13,13 +13,16 @@ public protocol ProcessHandle: AnyObject {
 
 /// Abstraction over process launching for testability.
 public protocol ProcessLauncher {
-    func launch(command: String, arguments: [String]) throws -> ProcessHandle
+    func launch(command: String, arguments: [String], onExit: @escaping () -> Void) throws -> ProcessHandle
 }
 
 /// Manages starting, stopping, and restarting the MLX server process.
 public final class ServerManager {
     private let launcher: ProcessLauncher
     private var process: ProcessHandle?
+
+    /// Called when the server process exits unexpectedly.
+    public var onExit: (() -> Void)?
 
     /// Whether the server process is currently running.
     public var isRunning: Bool { process?.isRunning ?? false }
@@ -38,7 +41,10 @@ public final class ServerManager {
             "--max-tokens", String(config.maxTokens)
         ] + config.extraArgs
 
-        process = try launcher.launch(command: "python", arguments: arguments)
+        process = try launcher.launch(command: config.pythonPath, arguments: arguments) { [weak self] in
+            self?.process = nil
+            self?.onExit?()
+        }
     }
 
     /// Stop the running server. No-op if not running.

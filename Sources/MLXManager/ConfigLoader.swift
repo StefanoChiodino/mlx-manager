@@ -21,6 +21,7 @@ public enum ConfigLoader {
         let model: String?
         let maxTokens: Int?
         let extraArgs: [String]?
+        let pythonPath: String?
     }
 
     // MARK: - Public API
@@ -39,11 +40,13 @@ public enum ConfigLoader {
             guard let name = dto.name else { throw ConfigError.missingField("name") }
             guard let model = dto.model else { throw ConfigError.missingField("model") }
             guard let maxTokens = dto.maxTokens else { throw ConfigError.missingField("maxTokens") }
+            guard let pythonPath = dto.pythonPath else { throw ConfigError.missingField("pythonPath") }
             return ServerConfig(
                 name: name,
                 model: model,
                 maxTokens: maxTokens,
-                extraArgs: dto.extraArgs ?? []
+                extraArgs: dto.extraArgs ?? [],
+                pythonPath: pythonPath
             )
         }
     }

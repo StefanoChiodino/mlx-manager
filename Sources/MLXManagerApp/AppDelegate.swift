@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let presets = loadPresets()
         serverManager = ServerManager(launcher: RealProcessLauncher())
+        serverManager.onExit = { [weak self] in self?.handleProcessExit() }
 
         let view = StatusBarView()
         statusBarController = StatusBarController(
@@ -23,16 +24,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func loadPresets() -> [ServerConfig] {
-        guard let url = Bundle.main.url(forResource: "presets", withExtension: "yaml"),
+        guard let url = Bundle.module.url(forResource: "presets", withExtension: "yaml"),
               let yaml = try? String(contentsOf: url, encoding: .utf8),
               let presets = try? ConfigLoader.load(yaml: yaml) else {
-            // Fallback: try loading from Resources/ directory next to executable
-            let fallbackPath = Bundle.main.bundlePath + "/../Resources/presets.yaml"
-            guard let yaml = try? String(contentsOfFile: fallbackPath, encoding: .utf8),
-                  let presets = try? ConfigLoader.load(yaml: yaml) else {
-                return []
-            }
-            return presets
+            return []
         }
         return presets
     }
@@ -76,5 +71,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleLogEvent(_ event: LogEvent) {
         serverState.handle(event)
         statusBarController.update(state: serverState)
+    }
+
+    private func handleProcessExit() {
+        logTailer?.stop()
+        logTailer = nil
+        serverState.serverStopped()
+        statusBarController.serverDidStop()
     }
 }

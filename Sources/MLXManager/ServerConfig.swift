@@ -6,4 +6,5 @@ public struct ServerConfig: Equatable {
     public let model: String
     public let maxTokens: Int
     public let extraArgs: [String]
+    public let pythonPath: String
 }

@@ -18,7 +18,7 @@ let package = Package(
             dependencies: ["MLXManager"],
             path: "Sources/MLXManagerApp",
             resources: [
-                .copy("../../Resources/presets.yaml"),
+                .copy("presets.yaml"),
             ]
         ),
         .testTarget(

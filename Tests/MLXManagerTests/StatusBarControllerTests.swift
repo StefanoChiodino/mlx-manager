@@ -86,8 +86,8 @@ struct StatusBarControllerTests {
     func menuIncludesPresetsAndQuit() {
         let view = MockStatusBarView()
         let presets = [
-            ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: []),
-            ServerConfig(name: "8-bit 80k", model: "m2", maxTokens: 81920, extraArgs: []),
+            ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3"),
+            ServerConfig(name: "8-bit 80k", model: "m2", maxTokens: 81920, extraArgs: [], pythonPath: "/usr/bin/python3"),
         ]
         let _ = StatusBarController(view: view, presets: presets, onStart: { _ in }, onStop: {})
         #expect(view.menuBuilt == true)
@@ -122,7 +122,7 @@ struct StatusBarControllerTests {
     func selectingPresetTriggersStart() {
         let view = MockStatusBarView()
         var startedWith: ServerConfig?
-        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [])
+        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
         let controller = StatusBarController(
             view: view, presets: [preset],
             onStart: { startedWith = $0 },

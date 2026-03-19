@@ -18,11 +18,13 @@ final class MockLauncher: ProcessLauncher {
     var launchedArguments: [String]?
     var launchCount = 0
     var handleToReturn = MockProcessHandle()
+    var lastOnExit: (() -> Void)?
 
-    func launch(command: String, arguments: [String]) throws -> ProcessHandle {
+    func launch(command: String, arguments: [String], onExit: @escaping () -> Void) throws -> ProcessHandle {
         launchedCommand = command
         launchedArguments = arguments
         launchCount += 1
+        lastOnExit = onExit
         return handleToReturn
     }
 }
@@ -34,20 +36,21 @@ struct ServerManagerTests {
 
     // MARK: - Start: argument assembly
 
-    @Test("start assembles correct CLI arguments from config")
-    func startAssemblesCorrectArguments() throws {
+    @Test("start uses pythonPath from config as the command")
+    func startUsesPythonPathFromConfig() throws {
         let launcher = MockLauncher()
         let manager = ServerManager(launcher: launcher)
         let config = ServerConfig(
             name: "4-bit 40k",
             model: "mlx-community/Qwen3.5-35B-A3B-4bit",
             maxTokens: 40960,
-            extraArgs: ["--trust-remote-code"]
+            extraArgs: ["--trust-remote-code"],
+            pythonPath: "/custom/venv/bin/python3"
         )
 
         try manager.start(config: config)
 
-        #expect(launcher.launchedCommand == "python")
+        #expect(launcher.launchedCommand == "/custom/venv/bin/python3")
         #expect(launcher.launchedArguments == [
             "-m", "mlx_lm.server",
             "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
@@ -66,7 +69,8 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
-            extraArgs: []
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config)
@@ -84,7 +88,8 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
-            extraArgs: []
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config)
@@ -106,7 +111,8 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
-            extraArgs: []
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config)
@@ -125,7 +131,8 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
-            extraArgs: []
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config)
@@ -158,13 +165,15 @@ struct ServerManagerTests {
             name: "4-bit 40k",
             model: "mlx-community/Qwen3.5-35B-A3B-4bit",
             maxTokens: 40960,
-            extraArgs: ["--trust-remote-code"]
+            extraArgs: ["--trust-remote-code"],
+            pythonPath: "/usr/bin/python3"
         )
         let config2 = ServerConfig(
             name: "8-bit 80k",
             model: "mlx-community/Qwen3.5-35B-A3B-8bit",
             maxTokens: 81920,
-            extraArgs: ["--trust-remote-code"]
+            extraArgs: ["--trust-remote-code"],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config1)
@@ -181,6 +190,29 @@ struct ServerManagerTests {
         #expect(launcher.launchCount == 2)
     }
 
+    // MARK: - onExit: process exits unexpectedly
+
+    @Test("onExit is called when process terminates")
+    func onExitCalledWhenProcessTerminates() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        var exitCalled = false
+        manager.onExit = { exitCalled = true }
+        let config = ServerConfig(
+            name: "test",
+            model: "test-model",
+            maxTokens: 1024,
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+        launcher.lastOnExit?()
+
+        #expect(exitCalled == true)
+        #expect(manager.isRunning == false)
+    }
+
     // MARK: - Start: includes extra args
 
     @Test("start includes all extraArgs in argument list")
@@ -195,7 +227,8 @@ struct ServerManagerTests {
                 "--trust-remote-code",
                 "--chat-template-args",
                 "{\"enable_thinking\":false}"
-            ]
+            ],
+            pythonPath: "/usr/bin/python3"
         )
 
         try manager.start(config: config)
