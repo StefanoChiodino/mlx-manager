@@ -20,6 +20,12 @@ public enum ConfigLoader {
         let name: String?
         let model: String?
         let maxTokens: Int?
+        let port: Int?
+        let prefillStepSize: Int?
+        let promptCacheSize: Int?
+        let promptCacheBytes: Int?
+        let trustRemoteCode: Bool?
+        let enableThinking: Bool?
         let extraArgs: [String]?
         let pythonPath: String?
     }
@@ -45,6 +51,12 @@ public enum ConfigLoader {
                 name: name,
                 model: model,
                 maxTokens: maxTokens,
+                port: dto.port ?? 8080,
+                prefillStepSize: dto.prefillStepSize ?? 4096,
+                promptCacheSize: dto.promptCacheSize ?? 4,
+                promptCacheBytes: dto.promptCacheBytes ?? 10 * 1024 * 1024 * 1024,
+                trustRemoteCode: dto.trustRemoteCode ?? false,
+                enableThinking: dto.enableThinking ?? false,
                 extraArgs: dto.extraArgs ?? [],
                 pythonPath: pythonPath
             )

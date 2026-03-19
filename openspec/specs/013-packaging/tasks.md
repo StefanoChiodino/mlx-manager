@@ -51,7 +51,9 @@
 
 ## Manual verification
 
-- [ ] T23: `make install` → app launches from Spotlight, no Dock icon appears
-- [ ] T24: Settings > General > "Start at login" on → app starts on next login
-- [ ] T25: Settings > General > "Start at login" off → app no longer starts at login
-- [ ] T26: `make uninstall` → fully removed, no leftovers
+- [x] T23: `make install` → app launches from Spotlight, no Dock icon appears
+- [x] T24: Settings > General > "Start at login" on → app starts on next login
+- [x] T25: Settings > General > "Start at login" off → app no longer starts at login
+- [x] T26: `make uninstall` → fully removed, no leftovers
+
+(End of file - total 57 lines)

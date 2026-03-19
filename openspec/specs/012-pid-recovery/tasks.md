@@ -35,3 +35,5 @@
 ## AppDelegate integration
 
 - [x] T19: Wire PID recovery into `applicationDidFinishLaunching` (manual verification)
+
+(End of file - total 37 lines)

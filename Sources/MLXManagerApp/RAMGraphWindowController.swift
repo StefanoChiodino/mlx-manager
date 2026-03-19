@@ -30,7 +30,7 @@ final class RAMGraphWindowController: NSWindowController {
 
 // MARK: -
 
-private final class RAMGraphView: NSView {
+public final class RAMGraphView: NSView {
 
     var samples: [RAMSample] = []
 
@@ -39,7 +39,7 @@ private final class RAMGraphView: NSView {
         return Double(bytes) / 1_073_741_824
     }()
 
-    override func draw(_ dirtyRect: NSRect) {
+    public override func draw(_ dirtyRect: NSRect) {
         NSColor.windowBackgroundColor.setFill()
         bounds.fill()
 

@@ -30,14 +30,14 @@ final class HistoryWindowController: NSWindowController {
 
 // MARK: -
 
-private final class HistoryChartView: NSView {
+public final class HistoryChartView: NSView {
 
     var records: [RequestRecord] = []
 
     private var trackingArea: NSTrackingArea?
     private var hoveredIndex: Int? = nil
 
-    override func updateTrackingAreas() {
+    public override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let old = trackingArea { removeTrackingArea(old) }
         let area = NSTrackingArea(rect: bounds,
@@ -47,7 +47,7 @@ private final class HistoryChartView: NSView {
         trackingArea = area
     }
 
-    override func draw(_ dirtyRect: NSRect) {
+    public override func draw(_ dirtyRect: NSRect) {
         guard !records.isEmpty else {
             NSColor.windowBackgroundColor.setFill()
             bounds.fill()
@@ -118,7 +118,7 @@ private final class HistoryChartView: NSView {
         str.draw(at: NSPoint(x: boxRect.minX + padding, y: boxRect.minY + padding))
     }
 
-    override func mouseMoved(with event: NSEvent) {
+    public override func mouseMoved(with event: NSEvent) {
         let loc = convert(event.locationInWindow, from: nil)
         guard !records.isEmpty else { hoveredIndex = nil; return }
         let padding: CGFloat = 20
@@ -128,7 +128,7 @@ private final class HistoryChartView: NSView {
         needsDisplay = true
     }
 
-    override func mouseExited(with event: NSEvent) {
+    public override func mouseExited(with event: NSEvent) {
         hoveredIndex = nil
         needsDisplay = true
     }

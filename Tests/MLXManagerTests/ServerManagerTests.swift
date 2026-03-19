@@ -70,7 +70,13 @@ struct ServerManagerTests {
             name: "4-bit 40k",
             model: "mlx-community/Qwen3.5-35B-A3B-4bit",
             maxTokens: 40960,
-            extraArgs: ["--trust-remote-code"],
+            port: 8081,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
             pythonPath: "/custom/venv/bin/python3"
         )
 
@@ -81,7 +87,13 @@ struct ServerManagerTests {
             "-m", "mlx_lm.server",
             "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
             "--max-tokens", "40960",
-            "--trust-remote-code"
+            "--port", "8081",
+            "--prefill-step-size", "4096",
+            "--prompt-cache-size", "4",
+            "--prompt-cache-bytes", String(10 * 1024 * 1024 * 1024),
+            "--trust-remote-code",
+            "--chat-template-args",
+            "{\"enable_thinking\":false}"
         ])
     }
 
@@ -95,6 +107,12 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
             extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
@@ -114,6 +132,12 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
             extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
@@ -137,6 +161,12 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
             extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
@@ -157,6 +187,12 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
             extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
@@ -191,14 +227,26 @@ struct ServerManagerTests {
             name: "4-bit 40k",
             model: "mlx-community/Qwen3.5-35B-A3B-4bit",
             maxTokens: 40960,
-            extraArgs: ["--trust-remote-code"],
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
         let config2 = ServerConfig(
             name: "8-bit 80k",
             model: "mlx-community/Qwen3.5-35B-A3B-8bit",
             maxTokens: 81920,
-            extraArgs: ["--trust-remote-code"],
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
 
@@ -228,6 +276,12 @@ struct ServerManagerTests {
             name: "test",
             model: "test-model",
             maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
             extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
@@ -249,11 +303,13 @@ struct ServerManagerTests {
             name: "4-bit 40k",
             model: "mlx-community/Qwen3.5-35B-A3B-4bit",
             maxTokens: 40960,
-            extraArgs: [
-                "--trust-remote-code",
-                "--chat-template-args",
-                "{\"enable_thinking\":false}"
-            ],
+            port: 8081,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
             pythonPath: "/usr/bin/python3"
         )
 
@@ -263,6 +319,10 @@ struct ServerManagerTests {
             "-m", "mlx_lm.server",
             "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
             "--max-tokens", "40960",
+            "--port", "8081",
+            "--prefill-step-size", "4096",
+            "--prompt-cache-size", "4",
+            "--prompt-cache-bytes", String(10 * 1024 * 1024 * 1024),
             "--trust-remote-code",
             "--chat-template-args",
             "{\"enable_thinking\":false}"
@@ -281,6 +341,9 @@ struct ServerManagerTests {
         let manager = ServerManager(launcher: launcher, pidFile: pidFile)
         let config = ServerConfig(
             name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
             extraArgs: [], pythonPath: "/usr/bin/python3"
         )
 
@@ -298,6 +361,9 @@ struct ServerManagerTests {
         let manager = ServerManager(launcher: launcher, pidFile: pidFile)
         let config = ServerConfig(
             name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
             extraArgs: [], pythonPath: "/usr/bin/python3"
         )
 
@@ -316,6 +382,9 @@ struct ServerManagerTests {
         let manager = ServerManager(launcher: launcher, pidFile: pidFile)
         let config = ServerConfig(
             name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
             extraArgs: [], pythonPath: "/usr/bin/python3"
         )
 
@@ -366,6 +435,9 @@ struct ServerManagerTests {
         let manager = ServerManager(launcher: launcher, processTerminator: terminator)
         let config = ServerConfig(
             name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
             extraArgs: [], pythonPath: "/usr/bin/python3"
         )
 
@@ -385,6 +457,9 @@ struct ServerManagerTests {
         let manager = ServerManager(launcher: launcher, processTerminator: terminator)
         let config = ServerConfig(
             name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
             extraArgs: [], pythonPath: "/usr/bin/python3"
         )
 
@@ -393,5 +468,163 @@ struct ServerManagerTests {
         #expect(throws: ServerError.alreadyRunning) {
             try manager.adoptProcess(pid: 999)
         }
+    }
+
+    // MARK: - T19: start includes port
+
+    @Test("start includes port from config")
+    func start_includesPort() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 9000, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--port") == true)
+        #expect(launcher.launchedArguments?.contains("9000") == true)
+    }
+
+    // MARK: - T20: start includes prefillStepSize
+
+    @Test("start includes prefillStepSize from config")
+    func start_includesPrefillStepSize() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 2048, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--prefill-step-size") == true)
+        #expect(launcher.launchedArguments?.contains("2048") == true)
+    }
+
+    // MARK: - T21: start includes promptCacheSize
+
+    @Test("start includes promptCacheSize from config")
+    func start_includesPromptCacheSize() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 8,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--prompt-cache-size") == true)
+        #expect(launcher.launchedArguments?.contains("8") == true)
+    }
+
+    // MARK: - T22: start includes promptCacheBytes
+
+    @Test("start includes promptCacheBytes from config")
+    func start_includesPromptCacheBytes() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 5 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--prompt-cache-bytes") == true)
+        #expect(launcher.launchedArguments?.contains(String(5 * 1024 * 1024 * 1024)) == true)
+    }
+
+    // MARK: - T23: start includes trustRemoteCode when true
+
+    @Test("start includes --trust-remote-code when trustRemoteCode is true")
+    func start_includesTrustRemoteCode() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--trust-remote-code") == true)
+    }
+
+    // MARK: - T24: start excludes trustRemoteCode when false
+
+    @Test("start excludes --trust-remote-code when trustRemoteCode is false")
+    func start_excludesTrustRemoteCode() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--trust-remote-code") == false)
+    }
+
+    // MARK: - T25: start enables thinking when enableThinking is true
+
+    @Test("start includes enable_thinking:true when enableThinking is true")
+    func start_includesEnableThinking() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: true,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--chat-template-args") == true)
+        #expect(launcher.launchedArguments?.contains("{\"enable_thinking\":true}") == true)
+    }
+
+    // MARK: - T26: start disables thinking when enableThinking is false
+
+    @Test("start includes enable_thinking:false when enableThinking is false")
+    func start_excludesEnableThinking() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedArguments?.contains("--chat-template-args") == true)
+        #expect(launcher.launchedArguments?.contains("{\"enable_thinking\":false}") == true)
     }
 }

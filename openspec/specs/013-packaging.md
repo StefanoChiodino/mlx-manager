@@ -1,4 +1,4 @@
-# Design: App Bundle Packaging
+# Spec: App Bundle Packaging
 
 **Change ID:** 013-packaging
 

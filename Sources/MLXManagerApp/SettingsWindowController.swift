@@ -16,6 +16,11 @@ final class SettingsWindowController: NSWindowController {
     private let installerOutput = NSTextView()
     private var installer: EnvironmentInstaller?
 
+    private let portField = NSTextField()
+    private let prefillStepSizeField = NSTextField()
+    private let promptCacheSizeField = NSTextField()
+    private let promptCacheBytesField = NSTextField()
+
     init(presets: [ServerConfig], settings: AppSettings) {
         self.draftPresets = presets
         self.draftSettings = settings
@@ -33,6 +38,7 @@ final class SettingsWindowController: NSWindowController {
         super.init(window: window)
 
         buildUI(in: window)
+        tableView.reloadData()
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -99,6 +105,10 @@ final class SettingsWindowController: NSWindowController {
             ("pythonPath", "Python Path", 160),
             ("model",      "Model",       130),
             ("maxTokens",  "Context",     60),
+            ("port",       "Port",        50),
+            ("prefillStepSize", "Prefill", 70),
+            ("promptCacheSize", "Cache Size", 80),
+            ("promptCacheBytes", "Cache Bytes", 100),
             ("extraArgs",  "Extra Args",  130),
         ]
         for col in columns {
@@ -137,6 +147,7 @@ final class SettingsWindowController: NSWindowController {
         let installButton = NSButton(title: "Install / Reinstall mlx-lm",
                                      target: self, action: #selector(installEnvironment))
         installButton.bezelStyle = .rounded
+        installButton.isEnabled = true
 
         let outputScrollView = NSScrollView()
         installerOutput.isEditable = false
@@ -172,11 +183,13 @@ final class SettingsWindowController: NSWindowController {
             scrollView.bottomAnchor.constraint(equalTo: rowButtons.topAnchor, constant: -4),
 
             rowButtons.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            rowButtons.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             rowButtons.bottomAnchor.constraint(equalTo: envBox.topAnchor, constant: -8),
 
             envBox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             envBox.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             envBox.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
+            envBox.heightAnchor.constraint(equalToConstant: 90),
         ])
 
         return container
@@ -227,7 +240,13 @@ final class SettingsWindowController: NSWindowController {
             name: "New Preset",
             model: "mlx-community/",
             maxTokens: 40960,
-            extraArgs: ["--trust-remote-code"],
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
+            extraArgs: [],
             pythonPath: EnvironmentInstaller.pythonPath
         ))
         tableView.reloadData()
@@ -336,6 +355,12 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
         case "pythonPath": field.stringValue = preset.pythonPath
         case "model":      field.stringValue = preset.model
         case "maxTokens":  field.stringValue = String(preset.maxTokens)
+        case "port":       field.stringValue = String(preset.port)
+        case "prefillStepSize": field.stringValue = String(preset.prefillStepSize)
+        case "promptCacheSize": field.stringValue = String(preset.promptCacheSize)
+        case "promptCacheBytes": field.stringValue = String(preset.promptCacheBytes)
+        case "trustRemoteCode": field.stringValue = preset.trustRemoteCode ? "✓" : " "
+        case "enableThinking": field.stringValue = preset.enableThinking ? "✓" : " "
         case "extraArgs":  field.stringValue = preset.extraArgs.joined(separator: " ")
         default: break
         }
@@ -352,20 +377,77 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
         switch col {
         case "name":
             draftPresets[row] = ServerConfig(name: val, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
                                              extraArgs: p.extraArgs, pythonPath: p.pythonPath)
         case "pythonPath":
             draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
                                              extraArgs: p.extraArgs, pythonPath: val)
         case "model":
             draftPresets[row] = ServerConfig(name: p.name, model: val, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
                                              extraArgs: p.extraArgs, pythonPath: p.pythonPath)
         case "maxTokens":
             let tokens = Int(val) ?? p.maxTokens
             draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: tokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "port":
+            let port = Int(val) ?? p.port
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "prefillStepSize":
+            let prefill = Int(val) ?? p.prefillStepSize
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: prefill,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "promptCacheSize":
+            let cacheSize = Int(val) ?? p.promptCacheSize
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: cacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "promptCacheBytes":
+            let cacheBytes = Int(val) ?? p.promptCacheBytes
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: cacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "trustRemoteCode":
+            let trust = val == "✓"
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: trust, enableThinking: p.enableThinking,
+                                             extraArgs: p.extraArgs, pythonPath: p.pythonPath)
+        case "enableThinking":
+            let thinking = val == "✓"
+            draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: thinking,
                                              extraArgs: p.extraArgs, pythonPath: p.pythonPath)
         case "extraArgs":
             let args = val.split(separator: " ").map(String.init)
             draftPresets[row] = ServerConfig(name: p.name, model: p.model, maxTokens: p.maxTokens,
+                                             port: p.port, prefillStepSize: p.prefillStepSize,
+                                             promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+                                             trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
                                              extraArgs: args, pythonPath: p.pythonPath)
         default: break
         }

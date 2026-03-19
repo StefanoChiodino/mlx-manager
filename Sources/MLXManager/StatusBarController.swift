@@ -19,6 +19,10 @@ public struct StatusBarMenuItem {
 public protocol StatusBarViewProtocol: AnyObject {
     func updateState(_ state: StatusBarDisplayState)
     func buildMenu(items: [StatusBarMenuItem])
+    func showRAMGraphView(samples: [RAMSample])
+    func closeRAMGraphView()
+    func showHistoryView(records: [RequestRecord])
+    func closeHistoryView()
 }
 
 /// Manages the menu bar icon state and menu, driven by ServerState.
@@ -180,5 +184,21 @@ public final class StatusBarController {
         items.append(StatusBarMenuItem(title: "Quit", action: nil))
 
         view.buildMenu(items: items)
+    }
+
+    public func showRAMGraphView(samples: [RAMSample]) {
+        view.showRAMGraphView(samples: samples)
+    }
+
+    public func closeRAMGraphView() {
+        view.closeRAMGraphView()
+    }
+
+    public func showHistoryView(records: [RequestRecord]) {
+        view.showHistoryView(records: records)
+    }
+
+    public func closeHistoryView() {
+        view.closeHistoryView()
     }
 }

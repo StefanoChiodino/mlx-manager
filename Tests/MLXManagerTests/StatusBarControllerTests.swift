@@ -8,6 +8,8 @@ final class MockStatusBarView: StatusBarViewProtocol {
     var lastState: StatusBarDisplayState?
     var menuItems: [(title: String, enabled: Bool)] = []
     var menuBuilt = false
+    var ramGraphSamples: [RAMSample]?
+    var historyRecords: [RequestRecord]?
 
     func updateState(_ state: StatusBarDisplayState) {
         lastState = state
@@ -16,6 +18,22 @@ final class MockStatusBarView: StatusBarViewProtocol {
     func buildMenu(items: [StatusBarMenuItem]) {
         menuBuilt = true
         menuItems = items.map { ($0.title, $0.isEnabled) }
+    }
+
+    func showRAMGraphView(samples: [RAMSample]) {
+        ramGraphSamples = samples
+    }
+
+    func closeRAMGraphView() {
+        ramGraphSamples = nil
+    }
+
+    func showHistoryView(records: [RequestRecord]) {
+        historyRecords = records
+    }
+
+    func closeHistoryView() {
+        historyRecords = nil
     }
 }
 

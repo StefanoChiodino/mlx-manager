@@ -10,29 +10,43 @@ final class ConfigLoaderTests: XCTestCase {
       - name: "4-bit 40k"
         model: "mlx-community/Qwen3.5-35B-A3B-4bit"
         maxTokens: 40960
+        port: 8081
+        prefillStepSize: 4096
+        promptCacheSize: 4
+        promptCacheBytes: 10737418240
+        trustRemoteCode: true
+        enableThinking: false
         pythonPath: "/custom/venv/bin/python3"
-        extraArgs:
-          - "--trust-remote-code"
-          - "--chat-template-args"
-          - '{"enable_thinking":false}'
       - name: "4-bit 80k"
         model: "mlx-community/Qwen3.5-35B-A3B-4bit"
         maxTokens: 81920
+        port: 8081
+        prefillStepSize: 4096
+        promptCacheSize: 4
+        promptCacheBytes: 10737418240
+        trustRemoteCode: true
+        enableThinking: false
         pythonPath: "/custom/venv/bin/python3"
-        extraArgs:
-          - "--trust-remote-code"
       - name: "8-bit 40k"
         model: "mlx-community/Qwen3.5-35B-A3B-8bit"
         maxTokens: 40960
+        port: 8081
+        prefillStepSize: 4096
+        promptCacheSize: 4
+        promptCacheBytes: 10737418240
+        trustRemoteCode: true
+        enableThinking: false
         pythonPath: "/custom/venv/bin/python3"
-        extraArgs:
-          - "--trust-remote-code"
       - name: "8-bit 80k"
         model: "mlx-community/Qwen3.5-35B-A3B-8bit"
         maxTokens: 81920
+        port: 8081
+        prefillStepSize: 4096
+        promptCacheSize: 4
+        promptCacheBytes: 10737418240
+        trustRemoteCode: true
+        enableThinking: false
         pythonPath: "/custom/venv/bin/python3"
-        extraArgs:
-          - "--trust-remote-code"
     """
 
     // MARK: - Helpers
@@ -131,6 +145,45 @@ final class ConfigLoaderTests: XCTestCase {
         XCTAssertThrowsError(try ConfigLoader.load(yaml: yaml)) { error in
             XCTAssertEqual(error as? ConfigError, .missingField("pythonPath"))
         }
+    }
+
+    /// port defaults to 8080 when not specified
+    func test_load_missingPortField_usesDefault() throws {
+        let yaml = """
+        presets:
+          - name: "test"
+            model: "some-model"
+            maxTokens: 40960
+            pythonPath: "/usr/bin/python3"
+        """
+        let presets = try ConfigLoader.load(yaml: yaml)
+        XCTAssertEqual(presets[0].port, 8080)
+    }
+
+    /// trustRemoteCode defaults to false when not specified
+    func test_load_missingTrustRemoteCodeField_usesDefault() throws {
+        let yaml = """
+        presets:
+          - name: "test"
+            model: "some-model"
+            maxTokens: 40960
+            pythonPath: "/usr/bin/python3"
+        """
+        let presets = try ConfigLoader.load(yaml: yaml)
+        XCTAssertEqual(presets[0].trustRemoteCode, false)
+    }
+
+    /// enableThinking defaults to false when not specified
+    func test_load_missingEnableThinkingField_usesDefault() throws {
+        let yaml = """
+        presets:
+          - name: "test"
+            model: "some-model"
+            maxTokens: 40960
+            pythonPath: "/usr/bin/python3"
+        """
+        let presets = try ConfigLoader.load(yaml: yaml)
+        XCTAssertEqual(presets[0].enableThinking, false)
     }
 
     // MARK: - Error cases

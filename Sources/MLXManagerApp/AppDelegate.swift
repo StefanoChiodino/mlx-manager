@@ -18,8 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Windows
     private var logWindowController: LogWindowController?
-    private var historyWindowController: HistoryWindowController?
-    private var ramGraphWindowController: RAMGraphWindowController?
     private var settingsWindowController: SettingsWindowController?
 
     private let logPath = NSString("~/repos/mlx/Logs/server.log").expandingTildeInPath
@@ -129,8 +127,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         requestHistory = []
         ramSamples = []
         logWindowController?.clear()
-        historyWindowController?.update(records: [])
-        ramGraphWindowController?.update(samples: [])
     }
 
     // MARK: - Log tailing
@@ -165,7 +161,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let record = serverState.completedRequest {
             requestHistory.append(record)
             if requestHistory.count > 500 { requestHistory.removeFirst() }
-            historyWindowController?.update(records: requestHistory)
             serverState.clearCompletedRequest()
         }
     }
@@ -189,7 +184,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             self.ramSamples.append(sample)
             if self.ramSamples.count > 1800 { self.ramSamples.removeFirst() }
-            self.ramGraphWindowController?.update(samples: self.ramSamples)
         }
         poller.start()
         ramPoller = poller
@@ -211,21 +205,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showHistory() {
-        if historyWindowController == nil {
-            historyWindowController = HistoryWindowController()
-        }
-        historyWindowController?.update(records: requestHistory)
-        historyWindowController?.showWindow(nil)
-        historyWindowController?.window?.makeKeyAndOrderFront(nil)
+        statusBarController.showHistoryView(records: requestHistory)
     }
 
     private func showRAMGraph() {
-        if ramGraphWindowController == nil {
-            ramGraphWindowController = RAMGraphWindowController()
-        }
-        ramGraphWindowController?.update(samples: ramSamples)
-        ramGraphWindowController?.showWindow(nil)
-        ramGraphWindowController?.window?.makeKeyAndOrderFront(nil)
+        statusBarController.showRAMGraphView(samples: ramSamples)
     }
 
     private func showSettings(presets: [ServerConfig]) {
@@ -255,6 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     // MARK: - Persistence

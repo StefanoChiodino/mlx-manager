@@ -67,11 +67,24 @@ public final class ServerManager {
     public func start(config: ServerConfig) throws {
         if isRunning { throw ServerError.alreadyRunning }
 
-        let arguments = [
+        var arguments = [
             "-m", "mlx_lm.server",
             "--model", config.model,
-            "--max-tokens", String(config.maxTokens)
-        ] + config.extraArgs
+            "--max-tokens", String(config.maxTokens),
+            "--port", String(config.port),
+            "--prefill-step-size", String(config.prefillStepSize),
+            "--prompt-cache-size", String(config.promptCacheSize),
+            "--prompt-cache-bytes", String(config.promptCacheBytes)
+        ]
+
+        if config.trustRemoteCode {
+            arguments.append("--trust-remote-code")
+        }
+
+        arguments.append("--chat-template-args")
+        arguments.append("{\"enable_thinking\":\(config.enableThinking ? "true" : "false")}")
+
+        arguments.append(contentsOf: config.extraArgs)
 
         process = try launcher.launch(command: config.pythonPath, arguments: arguments) { [weak self] in
             self?.process = nil

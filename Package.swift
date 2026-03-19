@@ -19,6 +19,8 @@ let package = Package(
             path: "Sources/MLXManagerApp",
             resources: [
                 .copy("presets.yaml"),
+                .copy("Resources/AppIcon.icns"),
+                .copy("Resources/AppIcon.iconset"),
             ]
         ),
         .testTarget(

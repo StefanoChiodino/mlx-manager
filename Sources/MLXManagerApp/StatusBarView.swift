@@ -156,4 +156,38 @@ final class StatusBarView: StatusBarViewProtocol {
     @objc private func menuItemClicked(_ sender: NSMenuItem) {
         menuItemActions[sender.tag]?()
     }
+
+    func showRAMGraphView(samples: [RAMSample]) {
+        let popover = NSPopover()
+        popover.contentSize = NSSize(width: 400, height: 200)
+        popover.behavior = .transient
+        
+        let viewController = NSViewController()
+        let graphView = RAMGraphView()
+        graphView.samples = samples
+        graphView.frame = NSRect(x: 0, y: 0, width: 400, height: 200)
+        viewController.view = graphView
+        
+        popover.contentViewController = viewController
+        popover.show(relativeTo: statusItem.button?.bounds ?? .zero, of: statusItem.button ?? NSView(), preferredEdge: .minY)
+    }
+
+    func closeRAMGraphView() {}
+
+    func showHistoryView(records: [RequestRecord]) {
+        let popover = NSPopover()
+        popover.contentSize = NSSize(width: 500, height: 300)
+        popover.behavior = .transient
+        
+        let viewController = NSViewController()
+        let chartView = HistoryChartView()
+        chartView.records = records
+        chartView.frame = NSRect(x: 0, y: 0, width: 500, height: 300)
+        viewController.view = chartView
+        
+        popover.contentViewController = viewController
+        popover.show(relativeTo: statusItem.button?.bounds ?? .zero, of: statusItem.button ?? NSView(), preferredEdge: .minY)
+    }
+
+    func closeHistoryView() {}
 }
