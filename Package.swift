@@ -13,6 +13,14 @@ let package = Package(
             dependencies: ["Yams"],
             path: "Sources/MLXManager"
         ),
+        .executableTarget(
+            name: "MLXManagerApp",
+            dependencies: ["MLXManager"],
+            path: "Sources/MLXManagerApp",
+            resources: [
+                .copy("../../Resources/presets.yaml"),
+            ]
+        ),
         .testTarget(
             name: "MLXManagerTests",
             dependencies: ["MLXManager"],
