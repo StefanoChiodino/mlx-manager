@@ -1,33 +1,36 @@
 # MLX Manager
 
-A macOS menu bar application for managing MLX LLM server instances.
+A native macOS menu bar application (Apple Silicon) for managing MLX LLM server instances.
 
-## Status: Spec Only
+## Development Methodology
 
-This repository contains the OpenSpec specification. Implementation is pending.
+This project follows two non-negotiable disciplines — see [AGENTS.md](AGENTS.md) for the full rules:
 
-See [OpenSpec.md](OpenSpec.md) for complete requirements and design.
+- **OpenSpec** — all work is spec-driven. Read `openspec/` before touching code.
+- **Red-Green TDD** — failing test first, always. No exceptions.
+
+## Spec Structure
+
+```text
+openspec/
+├── project.md              # Tech stack, architecture, domain knowledge
+├── specs/
+│   └── core/spec.md        # Source-of-truth requirements (Gherkin scenarios)
+└── changes/                # Active proposals/designs/tasks (work in progress)
+```
 
 ## Quick Reference
 
-### Problem
-- MLX server lacks "100%" completion signal in logs
-- Manual start/stop commands are tedious
-- No simple progress monitoring
+**Problem**: MLX server has no "100% complete" signal. Manual start/stop is tedious.
 
-### Solution
-- Menu bar app with one-click controls
-- Parse `Prompt processing progress: X/Y` for live progress
-- Display GPU memory and completion status
+**Solution**: Menu bar app with one-click controls + log parsing for live progress.
 
-### Config Presets
-- 4-bit 40k (memory efficient)
-- 4-bit 80k (balanced)
-- 8-bit 40k (max quality)
-- 8-bit 80k (large context)
+**Stack**: Swift, AppKit (NSStatusItem), XCTest, Swift Package Manager.
 
-## Next Steps
+## Working on This Repo
 
-1. Choose tech stack: Swift or Python
-2. Implement MVP (Phase 1)
-3. Add settings panel (Phase 2)
+1. Read `AGENTS.md` first
+2. Read `openspec/project.md` for domain context
+3. Read `openspec/specs/core/spec.md` for current requirements
+4. Check `openspec/changes/` for any active work in progress
+5. Follow OpenSpec + Red-Green TDD — by the book
