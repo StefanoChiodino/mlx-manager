@@ -10,6 +10,7 @@ final class RealProcessHandle: ProcessHandle {
     }
 
     var isRunning: Bool { process.isRunning }
+    var processIdentifier: Int32 { process.processIdentifier }
 
     func terminate() {
         process.terminate()

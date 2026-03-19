@@ -5,6 +5,7 @@ import Testing
 
 final class MockProcessHandle: ProcessHandle {
     var isRunning: Bool = true
+    var processIdentifier: Int32 = 99999
     var terminateCalled = false
 
     func terminate() {

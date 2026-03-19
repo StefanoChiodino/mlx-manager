@@ -8,6 +8,7 @@ public enum ServerError: Error, Equatable {
 /// A handle to a launched process that can be terminated.
 public protocol ProcessHandle: AnyObject {
     var isRunning: Bool { get }
+    var processIdentifier: Int32 { get }
     func terminate()
 }
 
@@ -26,6 +27,9 @@ public final class ServerManager {
 
     /// Whether the server process is currently running.
     public var isRunning: Bool { process?.isRunning ?? false }
+
+    /// PID of the running process, or nil if not running.
+    public var pid: Int32? { process?.isRunning == true ? process?.processIdentifier : nil }
 
     public init(launcher: ProcessLauncher) {
         self.launcher = launcher

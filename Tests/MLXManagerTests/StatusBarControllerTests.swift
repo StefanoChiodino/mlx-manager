@@ -56,8 +56,8 @@ struct StatusBarControllerTests {
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 4096, total: 41061))
-        // 4096/41061 ≈ 10% → 1 filled block out of 10
-        #expect(view.lastTitle == "▓░░░░░░░░░")
+        // 4096/41061 ≈ 10% → 1 filled block out of 10, plus percentage
+        #expect(view.lastTitle == "▓░░░░░░░░░ 10%")
     }
 
     @Test("Near-complete progress shows nearly full bar")
@@ -66,8 +66,8 @@ struct StatusBarControllerTests {
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
-        // 41056/41061 ≈ 99.99% → all 10 filled
-        #expect(view.lastTitle == "▓▓▓▓▓▓▓▓▓▓")
+        // 41056/41061 ≈ 99.99% → all 10 filled, plus percentage
+        #expect(view.lastTitle == "▓▓▓▓▓▓▓▓▓▓ 100%")
     }
 
     @Test("Completion signal returns to idle icon")
@@ -144,6 +144,41 @@ struct StatusBarControllerTests {
         controller.serverDidStart()
         controller.stopServer()
         #expect(stopCalled == true)
+    }
+
+    // MARK: - Preset section header
+
+    @Test("Offline menu shows 'Start with:' header before presets")
+    func offlineMenuShowsStartWithHeader() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let _ = StatusBarController(view: view, presets: [preset], onStart: { _ in }, onStop: {})
+        let titles = view.menuItems.map(\.title)
+        let headerIdx = titles.firstIndex(of: "Start with:")
+        let presetIdx = titles.firstIndex(of: "4-bit 40k")
+        #expect(headerIdx != nil)
+        #expect(presetIdx != nil)
+        if let h = headerIdx, let p = presetIdx {
+            #expect(p > h, "preset item should follow header")
+        }
+    }
+
+    @Test("'Start with:' header is not selectable")
+    func startWithHeaderIsDisabled() {
+        let view = MockStatusBarView()
+        let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        let headerItem = view.menuItems.first(where: { $0.title == "Start with:" })
+        #expect(headerItem?.enabled == false)
+    }
+
+    @Test("Running menu shows 'Switch to:' header instead of 'Start with:'")
+    func runningMenuShowsSwitchToHeader() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Switch to:"))
+        #expect(!titles.contains("Start with:"))
     }
 
     // MARK: - Helpers
