@@ -188,7 +188,14 @@ The app MUST be able to start the MLX server with a selected config preset.
 
 - GIVEN a valid config preset is selected
 - WHEN the user clicks Start
-- THEN the server process MUST be launched with the correct CLI arguments for that preset
+- THEN the server process MUST be launched using `config.pythonPath` as the command, with the correct CLI arguments for that preset
+
+#### Scenario: Process exit notification
+
+- GIVEN the server process is running
+- WHEN the process terminates (crash, external kill, or natural exit)
+- THEN `ServerManager.onExit` MUST be called
+- AND the app MUST clean up log tailing and update state to offline
 
 ---
 
@@ -213,19 +220,30 @@ The app MUST support restarting the server (stop then start with the same config
 ### Requirement: Config Presets
 
 The app MUST load config presets from a bundled `presets.yaml` file.
+`presets.yaml` MUST be co-located in `Sources/MLXManagerApp/` and loaded via `Bundle.module`.
 Four presets MUST be present: 4-bit 40k, 4-bit 80k, 8-bit 40k, 8-bit 80k.
+
+Each preset MUST include a `pythonPath` field (full path to the python binary for that preset's venv).
+Missing `pythonPath` MUST throw `ConfigError.missingField("pythonPath")`.
 
 #### Scenario: Preset loading
 
 - GIVEN the bundled `presets.yaml` exists
 - WHEN the app loads configs
 - THEN it MUST return exactly 4 presets with correct model names and context sizes
+- AND each preset MUST have a non-empty `pythonPath`
 
 #### Scenario: 4-bit 40k preset args
 
 - GIVEN the 4-bit 40k preset is loaded
 - THEN it MUST include `--chat-template-args '{"enable_thinking":false}'` in its args
 - AND `--trust-remote-code`
+
+#### Scenario: Missing pythonPath
+
+- GIVEN a preset YAML entry with no `pythonPath` field
+- WHEN loaded
+- THEN `ConfigLoader` MUST throw `ConfigError.missingField("pythonPath")`
 
 ---
 
