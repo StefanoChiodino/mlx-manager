@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/master.swiftdeps"
+  },
+  "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.d",
+    "object": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.dia"
+  }
+}

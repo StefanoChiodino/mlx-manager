@@ -1,0 +1,3 @@
+module MLXManager {
+    header "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/include/MLXManager-Swift.h"
+}

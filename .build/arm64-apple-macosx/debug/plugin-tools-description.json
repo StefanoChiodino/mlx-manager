@@ -1,0 +1,566 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.xctest/Contents/MacOS/MLXManagerPackageTests",
+      "packagePath" : "/Users/stefano/repos/mlx-manager",
+      "productName" : "MLXManagerPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.MLXManager-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/sources",
+      "importPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/Sources/MLXManager/LogParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "MLXManager",
+      "moduleOutputPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManager.swiftmodule",
+      "objects" : [
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/LogParser.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j24",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/include/MLXManager-Swift.h",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "mlx_manager"
+      ],
+      "outputFileMapPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/LogParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManager.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/stefano/repos/mlx-manager/Sources/MLXManager/LogParser.swift"
+      ],
+      "tempsPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.MLXManagerPackageTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/sources",
+      "importPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManagerTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "MLXManagerPackageTests",
+      "moduleOutputPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManagerPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j24",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/include/MLXManagerPackageTests-Swift.h",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "mlx_manager"
+      ],
+      "outputFileMapPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManagerPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.MLXManagerTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/sources",
+      "importPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/Tests/MLXManagerTests/LogParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManager.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "MLXManagerTests",
+      "moduleOutputPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManagerTests.swiftmodule",
+      "objects" : [
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/LogParserTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j24",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "mlx_manager"
+      ],
+      "outputFileMapPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/LogParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules/MLXManagerTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/stefano/repos/mlx-manager/Tests/MLXManagerTests/LogParserTests.swift"
+      ],
+      "tempsPath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "MLXManager" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "MLXManager",
+      "-package-name",
+      "mlx_manager",
+      "-c",
+      "/Users/stefano/repos/mlx-manager/Sources/MLXManager/LogParser.swift",
+      "-I",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j24",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/include/MLXManager-Swift.h",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "mlx_manager",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "MLXManagerPackageTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "MLXManagerPackageTests",
+      "-package-name",
+      "mlx_manager",
+      "-c",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j24",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/include/MLXManagerPackageTests-Swift.h",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "mlx_manager",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "MLXManagerTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "MLXManagerTests",
+      "-package-name",
+      "mlx_manager",
+      "-c",
+      "/Users/stefano/repos/mlx-manager/Tests/MLXManagerTests/LogParserTests.swift",
+      "-I",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j24",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "mlx_manager",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "MLXManager" : [
+
+    ],
+    "MLXManagerPackageTests" : [
+      "MLXManagerTests",
+      "MLXManager"
+    ],
+    "MLXManagerTests" : [
+      "MLXManager"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/Sources/MLXManager/LogParser.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/sources"
+    },
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/sources"
+    },
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManager.build/LogParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/LogParserTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/stefano/repos/mlx-manager/Tests/MLXManagerTests/LogParserTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/MLXManagerTests.build/sources"
+    },
+    "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/stefano/repos/mlx-manager/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}
