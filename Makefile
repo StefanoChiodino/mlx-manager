@@ -20,6 +20,7 @@ bundle: build
 	cp $(BINARY) $(MACOS_DIR)/$(APP_NAME)
 	cp Resources/Info.plist $(CONTENTS)/Info.plist
 	cp Sources/MLXManagerApp/presets.yaml $(RES_DIR)/presets.yaml
+	cp Resources/LaunchAgent.plist $(RES_DIR)/LaunchAgent.plist
 
 sign: bundle
 	codesign --force --deep -s - $(BUNDLE_DIR)

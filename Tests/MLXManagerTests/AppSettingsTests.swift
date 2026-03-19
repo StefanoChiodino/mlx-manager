@@ -19,4 +19,18 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertEqual(decoded, s)
     }
+
+    func test_appSettings_startAtLogin_defaultsFalse() {
+        XCTAssertEqual(AppSettings().startAtLogin, false)
+    }
+
+    func test_appSettings_startAtLogin_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.startAtLogin = true
+
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(decoded.startAtLogin, true)
+    }
 }

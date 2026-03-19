@@ -26,8 +26,32 @@
 - [x] T12: `make clean` removes `build/`
 - [x] T13: default target (`all`) depends on `build bundle sign`
 
+## AppSettings — startAtLogin field
+
+- [x] T14: `AppSettings` gains `startAtLogin: Bool` defaulting to `false`
+- [x] T15: `AppSettings` round-trips `startAtLogin` through JSON encode/decode
+
+## LoginItemManager
+
+- [x] T16: `LoginItemManager.enable()` copies `LaunchAgent.plist` to `~/Library/LaunchAgents/com.stefano.mlx-manager.plist` and calls `launchctl load`
+- [x] T17: `LoginItemManager.disable()` calls `launchctl unload` and removes the plist
+- [x] T18: `LoginItemManager.isEnabled()` returns `true` iff the plist file exists
+
+## Settings UI
+
+- [x] T19: "Start at login" checkbox appears in Settings > General, below RAM graph toggle
+- [x] T20: checkbox initial state reflects `AppSettings.startAtLogin`
+- [x] T21: on Save with toggle changed to on → `LoginItemManager.enable()` called
+- [x] T22: on Save with toggle changed to off → `LoginItemManager.disable()` called
+
+## Makefile — keep as dev convenience only
+
+- [x] T10: `make launch-agent` copies plist to `~/Library/LaunchAgents/` and loads it (dev convenience)
+- [x] T11: `make remove-launch-agent` unloads and removes plist (dev convenience)
+
 ## Manual verification
 
-- [ ] T14: `make install` → app launches from Spotlight, no Dock icon appears
-- [ ] T15: `make launch-agent` → app starts on next login session
-- [ ] T16: `make uninstall && make remove-launch-agent` → fully removed, no leftovers
+- [ ] T23: `make install` → app launches from Spotlight, no Dock icon appears
+- [ ] T24: Settings > General > "Start at login" on → app starts on next login
+- [ ] T25: Settings > General > "Start at login" off → app no longer starts at login
+- [ ] T26: `make uninstall` → fully removed, no leftovers

@@ -4,6 +4,7 @@ import Foundation
 public struct AppSettings: Codable, Equatable {
     public var ramGraphEnabled: Bool = false
     public var ramPollInterval: Int = 5   // seconds: 2, 5, or 10
+    public var startAtLogin: Bool = false
 
     public init() {}
 }
