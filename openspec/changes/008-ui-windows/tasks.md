@@ -55,14 +55,22 @@ Window controllers (pure AppKit) have no unit tests — verified by build + manu
 
 ---
 
-## F0. StatusBarController — preset section clarity
+## F0. StatusBarController — menu UX
 
-- [x] **RED** `test_offlineMenuShowsStartWithHeader` — no "Start with:" header exists; fails
-- [x] **GREEN** insert disabled "Start with:" header before preset items when offline; "Switch to:" when running
-- [x] **RED** `test_startWithHeaderIsDisabled` — header item is non-selectable
+- [x] **RED** `test_offlineMenuShowsStartWithHeader` — no "Start with:" header exists; fails to find item
+- [x] **GREEN** insert disabled "Start with:" / "Switch to:" header before preset items
+- [x] **RED** `test_startWithHeaderIsDisabled` — header item enabled; fails
 - [x] **GREEN** `isEnabled: false` on header item
-- [x] **RED** `test_runningMenuShowsSwitchToHeader` — running state shows "Switch to:" not "Start with:"
+- [x] **RED** `test_runningMenuShowsSwitchToHeader` — running state missing "Switch to:"; fails
 - [x] **GREEN** branch on `running` flag for header label
+- [x] **RED** `test_stopAbsentWhenOffline` — "Stop" present when offline; fails
+- [x] **GREEN** wrap Stop item in `if running { }` — absent when offline
+- [x] **RED** `test_presetWithMissingPythonIsDisabled` — no `fileExists` param; compile error
+- [x] **GREEN** inject `fileExists: (String) -> Bool`; disabled + "(env missing)" suffix when path absent
+- [x] **RED** `test_presetWithValidPythonIsEnabled` — verify enabled path with `fileExists: { _ in true }`
+- [x] **GREEN** covered by same implementation
+- [x] **FIX** `StatusBarView.buildMenu` — `NSMenuItem` ignores `isEnabled` when action is set; only assign action/target when `isEnabled && action != nil`
+- [x] **FIX** `ServerConfig` — add explicit `public init` so memberwise init is accessible across module boundary after `Codable` conformance added
 
 ---
 

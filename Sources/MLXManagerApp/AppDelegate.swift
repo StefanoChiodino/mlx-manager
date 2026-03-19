@@ -116,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Update state
         serverState.handle(event)
-        statusBarController.update(state: serverState, settings: settings)
+        statusBarController.update(state: serverState)
 
         // Drain completed request
         if let record = serverState.completedRequest {

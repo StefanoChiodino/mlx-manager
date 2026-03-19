@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mlx-manager}",
+            "name": "Debug MLXManagerApp",
+            "target": "MLXManagerApp",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug MLXManagerApp"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mlx-manager}",
+            "name": "Release MLXManagerApp",
+            "target": "MLXManagerApp",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release MLXManagerApp"
+        }
+    ]
+}

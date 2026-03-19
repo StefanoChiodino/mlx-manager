@@ -262,21 +262,41 @@ Menu items added to `StatusBarController`:
 ```
 [status text — disabled]
 ────────────────
-4-bit 40k
+Start with:           ← disabled header; "Switch to:" when running
+4-bit 40k             ← disabled + "(env missing)" suffix if pythonPath absent
 4-bit 80k
 8-bit 40k
 8-bit 80k
 ────────────────
-Stop
+Stop                  ← only shown when running (absent when offline)
 ────────────────
 Show Log
 Request History
-RAM Graph          ← only shown when settings.ramGraphEnabled
+RAM Graph             ← only shown when settings.ramGraphEnabled
 ────────────────
 Settings…
 ────────────────
 Quit
 ```
+
+### Preset availability check
+
+`StatusBarController` accepts a `fileExists: (String) -> Bool` dependency
+(default: `FileManager.default.fileExists(atPath:)`). When building the menu,
+each preset's `pythonPath` is checked:
+
+- exists → normal title, enabled when not running
+- missing → title appended with `"  (env missing)"`, always disabled, no action
+
+This prevents launching with a broken environment and nudges the user toward
+Settings → "Install / Reinstall mlx-lm".
+
+### AppKit disabled-item fix (`StatusBarView`)
+
+`NSMenuItem` ignores `isEnabled = false` when it has an `action` selector set
+(the responder chain re-enables it). Fix: only assign `action` and `target` when
+`item.isEnabled == true && item.action != nil`. Items with no action or
+`isEnabled: false` get `action: nil, target: nil`.
 
 ---
 

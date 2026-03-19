@@ -42,17 +42,21 @@ externally by `KV Caches:` or `POST 200`, not by `current == total`.
 
 ### Requirement: Menu Bar Icon States
 
-The app MUST display a single icon in the macOS status bar at all times while running.
-The icon MUST have exactly three visual states:
+The app MUST display a single custom-drawn `ArcProgressView` in the macOS status bar
+button at all times while running. The view has exactly three visual states driven by
+`StatusBarDisplayState`:
 
 | State | Visual | Condition |
 |-------|--------|-----------|
-| Offline | Hollow / empty circle | Server process not running |
-| Idle | Solid green circle | Server running, no active request |
-| Processing | Progress bar showing X% | Progress lines being received |
+| `.offline` | Outline circle (tertiaryLabelColor) | Server process not running |
+| `.idle` | Filled green circle (systemGreen) | Server running, no active request |
+| `.processing(fraction)` | Clockwise-filling arc (controlAccentColor) + `N%` label | Progress lines being received |
 
-The processing state MUST display a visual progress bar (not just a percentage number)
-representing `current / total` from the most recent `Prompt processing progress:` line.
+The processing state MUST render a `Core Graphics` arc filling clockwise from 12 o'clock
+proportional to `fraction = current / total`, with a percentage label to the right.
+The view resizes itself via `intrinsicContentSize` so the status item width adapts.
+
+`StatusBarViewProtocol.updateTitle(_:)` is replaced by `updateState(_: StatusBarDisplayState)`.
 
 #### Scenario: Server offline
 
@@ -70,15 +74,16 @@ representing `current / total` from the most recent `Prompt processing progress:
 #### Scenario: Server processing — partial progress
 
 - GIVEN a `Prompt processing progress: 4096/41061` line was the most recent log event
-- WHEN the menu bar icon is rendered
-- THEN it MUST display a progress bar at approximately 10%
+- WHEN the status bar is updated
+- THEN it MUST emit `.processing(fraction: ≈0.0997)`
+- AND the arc MUST be filled approximately 10% clockwise from the top
 
 #### Scenario: Server processing — near complete
 
 - GIVEN the most recent progress line was `Prompt processing progress: 41056/41061`
-- WHEN the menu bar icon is rendered
-- THEN it MUST display a progress bar at approximately 99.9%
-- AND the state MUST remain "processing" until a `KV Caches:` or `POST 200` line is seen
+- WHEN the status bar is updated
+- THEN it MUST emit `.processing(fraction: >0.999)`
+- AND the state MUST remain `.processing` until a `KV Caches:` or `POST 200` line is seen
 
 #### Scenario: Request completed via KV Caches signal
 

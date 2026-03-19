@@ -5,12 +5,12 @@ import Testing
 
 /// Captures menu bar updates for testing without AppKit.
 final class MockStatusBarView: StatusBarViewProtocol {
-    var lastTitle: String?
+    var lastState: StatusBarDisplayState?
     var menuItems: [(title: String, enabled: Bool)] = []
     var menuBuilt = false
 
-    func updateTitle(_ title: String) {
-        lastTitle = title
+    func updateState(_ state: StatusBarDisplayState) {
+        lastState = state
     }
 
     func buildMenu(items: [StatusBarMenuItem]) {
@@ -24,60 +24,67 @@ struct StatusBarControllerTests {
 
     // MARK: - Initial display
 
-    @Test("Initial state shows offline icon")
+    @Test("Initial state shows offline")
     func initialStateShowsOffline() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        #expect(view.lastTitle == "○")
+        #expect(view.lastState == .offline)
     }
 
     // MARK: - Icon states
 
-    @Test("Server started shows idle icon")
+    @Test("Server started shows idle")
     func serverStartedShowsIdle() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
-        #expect(view.lastTitle == "●")
+        #expect(view.lastState == .idle)
     }
 
-    @Test("Server stopped shows offline icon")
+    @Test("Server stopped shows offline")
     func serverStoppedShowsOffline() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.serverDidStop()
-        #expect(view.lastTitle == "○")
+        #expect(view.lastState == .offline)
     }
 
-    @Test("Progress event shows progress bar at ~10%")
-    func progressShowsBar() {
+    @Test("Progress event emits processing state with correct fraction")
+    func progressEmitsProcessingFraction() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 4096, total: 41061))
-        // 4096/41061 ≈ 10% → 1 filled block out of 10, plus percentage
-        #expect(view.lastTitle == "▓░░░░░░░░░ 10%")
+        // 4096/41061 ≈ 0.0997
+        if case let .processing(fraction) = view.lastState {
+            #expect(abs(fraction - (4096.0 / 41061.0)) < 0.001)
+        } else {
+            Issue.record("Expected .processing state, got \(String(describing: view.lastState))")
+        }
     }
 
-    @Test("Near-complete progress shows nearly full bar")
-    func nearCompleteShowsFullBar() {
+    @Test("Near-complete progress emits fraction near 1")
+    func nearCompleteEmitsHighFraction() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
-        // 41056/41061 ≈ 99.99% → all 10 filled, plus percentage
-        #expect(view.lastTitle == "▓▓▓▓▓▓▓▓▓▓ 100%")
+        if case let .processing(fraction) = view.lastState {
+            #expect(fraction > 0.999)
+        } else {
+            Issue.record("Expected .processing state")
+        }
     }
 
-    @Test("Completion signal returns to idle icon")
+    @Test("Completion signal returns to idle")
     func completionReturnsToIdle() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 4096, total: 41061))
         controller.update(state: makeState(status: .idle))
-        #expect(view.lastTitle == "●")
+        #expect(view.lastState == .idle)
     }
 
     // MARK: - Menu building
@@ -91,20 +98,17 @@ struct StatusBarControllerTests {
         ]
         let _ = StatusBarController(view: view, presets: presets, onStart: { _ in }, onStop: {})
         #expect(view.menuBuilt == true)
-        // Should have: Start submenu header, presets, separator, Stop, separator, Quit
         let titles = view.menuItems.map(\.title)
         #expect(titles.contains("4-bit 40k"))
         #expect(titles.contains("8-bit 80k"))
-        #expect(titles.contains("Stop"))
         #expect(titles.contains("Quit"))
     }
 
-    @Test("Stop is disabled when offline")
-    func stopDisabledWhenOffline() {
+    @Test("Stop is absent from menu when offline")
+    func stopAbsentWhenOffline() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        let stopItem = view.menuItems.first(where: { $0.title == "Stop" })
-        #expect(stopItem?.enabled == false)
+        #expect(!view.menuItems.map(\.title).contains("Stop"))
     }
 
     @Test("Stop is enabled when server is running")
@@ -144,6 +148,36 @@ struct StatusBarControllerTests {
         controller.serverDidStart()
         controller.stopServer()
         #expect(stopCalled == true)
+    }
+
+    // MARK: - Missing python environment
+
+    @Test("Preset with missing pythonPath is disabled and shows env missing suffix")
+    func presetWithMissingPythonIsDisabled() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/nonexistent/python")
+        let _ = StatusBarController(
+            view: view, presets: [preset],
+            onStart: { _ in }, onStop: {},
+            fileExists: { _ in false }
+        )
+        let item = view.menuItems.first(where: { $0.title.contains("4-bit 40k") })
+        #expect(item != nil)
+        #expect(item?.enabled == false)
+        #expect(item?.title.contains("env missing") == true)
+    }
+
+    @Test("Preset with valid pythonPath is enabled")
+    func presetWithValidPythonIsEnabled() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let _ = StatusBarController(
+            view: view, presets: [preset],
+            onStart: { _ in }, onStop: {},
+            fileExists: { _ in true }
+        )
+        let item = view.menuItems.first(where: { $0.title == "4-bit 40k" })
+        #expect(item?.enabled == true)
     }
 
     // MARK: - Preset section header
@@ -188,9 +222,6 @@ struct StatusBarControllerTests {
         state.serverStarted()
         if status == .processing, let c = current, let t = total {
             state.handle(.progress(current: c, total: t, percentage: (Double(c) / Double(t)) * 100))
-        }
-        if status == .idle {
-            // Already idle after serverStarted
         }
         return state
     }

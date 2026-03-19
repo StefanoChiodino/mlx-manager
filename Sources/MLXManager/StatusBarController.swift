@@ -17,7 +17,7 @@ public struct StatusBarMenuItem {
 
 /// Abstraction over the status bar UI for testability.
 public protocol StatusBarViewProtocol: AnyObject {
-    func updateTitle(_ title: String)
+    func updateState(_ state: StatusBarDisplayState)
     func buildMenu(items: [StatusBarMenuItem])
 }
 
@@ -27,6 +27,7 @@ public final class StatusBarController {
     private let presets: [ServerConfig]
     private let onStart: (ServerConfig) -> Void
     private let onStop: () -> Void
+    private let fileExists: (String) -> Bool
     private var running = false
     private var currentSettings: AppSettings
 
@@ -41,45 +42,46 @@ public final class StatusBarController {
         presets: [ServerConfig],
         onStart: @escaping (ServerConfig) -> Void,
         onStop: @escaping () -> Void,
-        settings: AppSettings = AppSettings()
+        settings: AppSettings = AppSettings(),
+        fileExists: @escaping (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
     ) {
         self.view = view
         self.presets = presets
         self.onStart = onStart
         self.onStop = onStop
+        self.fileExists = fileExists
         self.currentSettings = settings
-        view.updateTitle("○")
+        view.updateState(.offline)
         rebuildMenu(statusText: "Server: Offline")
     }
 
     /// Called when the server process has started.
     public func serverDidStart() {
         running = true
-        view.updateTitle("●")
+        view.updateState(.idle)
         rebuildMenu(statusText: "Server: Idle")
     }
 
     /// Called when the server process has stopped.
     public func serverDidStop() {
         running = false
-        view.updateTitle("○")
+        view.updateState(.offline)
         rebuildMenu(statusText: "Server: Offline")
     }
 
     /// Update the icon and status text based on current ServerState.
-    public func update(state: ServerState, settings: AppSettings = AppSettings()) {
-        currentSettings = settings
+    public func update(state: ServerState) {
         switch state.status {
         case .offline:
-            view.updateTitle("○")
+            view.updateState(.offline)
             rebuildMenu(statusText: "Server: Offline")
         case .idle:
-            view.updateTitle("●")
+            view.updateState(.idle)
             rebuildMenu(statusText: "Server: Idle")
         case .processing:
             if let progress = state.progress {
                 let fraction = Double(progress.current) / Double(progress.total)
-                view.updateTitle(progressTitle(fraction: fraction, settings: settings))
+                view.updateState(.processing(fraction: fraction))
                 let pct = Int((fraction * 100).rounded())
                 let currentFmt = formatTokens(progress.current)
                 let totalFmt = formatTokens(progress.total)
@@ -91,7 +93,6 @@ public final class StatusBarController {
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
-        // Rebuild with last known status text — simplest approach for now
         rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
     }
 
@@ -107,33 +108,6 @@ public final class StatusBarController {
     }
 
     // MARK: - Private
-
-    private func progressTitle(fraction: Double, settings: AppSettings) -> String {
-        switch settings.progressStyle {
-        case .bar:
-            let bar = progressBar(fraction: fraction)
-            let pct = Int((fraction * 100).rounded())
-            return "\(bar) \(pct)%"
-        case .pie:
-            return pieGlyph(fraction: fraction)
-        }
-    }
-
-    private func progressBar(fraction: Double, width: Int = 10) -> String {
-        let filled = Int((fraction * Double(width)).rounded(.up))
-        let clamped = min(max(filled, 0), width)
-        return String(repeating: "▓", count: clamped) + String(repeating: "░", count: width - clamped)
-    }
-
-    private func pieGlyph(fraction: Double) -> String {
-        switch fraction {
-        case ..<0.2:  return "○"
-        case ..<0.4:  return "◔"
-        case ..<0.6:  return "◑"
-        case ..<0.8:  return "◕"
-        default:      return "●"
-        }
-    }
 
     private func formatTokens(_ n: Int) -> String {
         let formatter = NumberFormatter()
@@ -155,20 +129,24 @@ public final class StatusBarController {
         // Preset items
         for (i, preset) in presets.enumerated() {
             let idx = i
+            let envReady = fileExists(preset.pythonPath)
+            let title = envReady ? preset.name : "\(preset.name)  (env missing)"
+            let enabled = !running && envReady
             items.append(StatusBarMenuItem(
-                title: preset.name,
-                isEnabled: !running,
-                action: { [weak self] in self?.selectPreset(at: idx) }
+                title: title,
+                isEnabled: enabled,
+                action: enabled ? { [weak self] in self?.selectPreset(at: idx) } : nil
             ))
         }
 
-        items.append(StatusBarMenuItem(title: "-", isSeparator: true))
-
-        items.append(StatusBarMenuItem(
-            title: "Stop",
-            isEnabled: running,
-            action: { [weak self] in self?.stopServer() }
-        ))
+        if running {
+            items.append(StatusBarMenuItem(title: "-", isSeparator: true))
+            items.append(StatusBarMenuItem(
+                title: "Stop",
+                isEnabled: true,
+                action: { [weak self] in self?.stopServer() }
+            ))
+        }
 
         items.append(StatusBarMenuItem(title: "-", isSeparator: true))
 
@@ -180,11 +158,8 @@ public final class StatusBarController {
         }
 
         items.append(StatusBarMenuItem(title: "-", isSeparator: true))
-
         items.append(StatusBarMenuItem(title: "Settings…", action: { [weak self] in self?.onShowSettings?() }))
-
         items.append(StatusBarMenuItem(title: "-", isSeparator: true))
-
         items.append(StatusBarMenuItem(title: "Quit", action: nil))
 
         view.buildMenu(items: items)

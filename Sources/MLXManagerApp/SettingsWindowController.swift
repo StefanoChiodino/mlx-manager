@@ -10,7 +10,6 @@ final class SettingsWindowController: NSWindowController {
 
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
-    private let progressStylePopup = NSPopUpButton()
     private let ramGraphCheckbox = NSButton(checkboxWithTitle: "Enable RAM graph", target: nil, action: nil)
     private let ramPollPopup = NSPopUpButton()
     private let installerOutput = NSTextView()
@@ -183,10 +182,6 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func buildGeneralView() -> NSView {
-        progressStylePopup.addItem(withTitle: "Block bar  (▓▓▓░░ 32%)")
-        progressStylePopup.addItem(withTitle: "Pie glyph  (◑)")
-        progressStylePopup.selectItem(at: draftSettings.progressStyle == .bar ? 0 : 1)
-
         ramGraphCheckbox.state = draftSettings.ramGraphEnabled ? .on : .off
         ramGraphCheckbox.target = self
         ramGraphCheckbox.action = #selector(ramGraphToggled)
@@ -196,19 +191,15 @@ final class SettingsWindowController: NSWindowController {
         ramPollPopup.selectItem(at: pollIndex)
         ramPollPopup.isEnabled = draftSettings.ramGraphEnabled
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 3)
+        let grid = NSGridView(numberOfColumns: 2, rows: 2)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
-        grid.cell(atColumnIndex: 0, rowIndex: 0).contentView =
-            NSTextField(labelWithString: "Progress style:")
-        grid.cell(atColumnIndex: 1, rowIndex: 0).contentView = progressStylePopup
+        grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = NSTextField(labelWithString: "")
+        grid.cell(atColumnIndex: 1, rowIndex: 0).contentView = ramGraphCheckbox
 
-        grid.cell(atColumnIndex: 0, rowIndex: 1).contentView = NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 1).contentView = ramGraphCheckbox
-
-        grid.cell(atColumnIndex: 0, rowIndex: 2).contentView =
+        grid.cell(atColumnIndex: 0, rowIndex: 1).contentView =
             NSTextField(labelWithString: "Poll interval:")
-        grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = ramPollPopup
+        grid.cell(atColumnIndex: 1, rowIndex: 1).contentView = ramPollPopup
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowSpacing = 8
@@ -287,7 +278,6 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func saveTapped() {
         // Collect general settings
-        draftSettings.progressStyle = progressStylePopup.indexOfSelectedItem == 0 ? .bar : .pie
         draftSettings.ramGraphEnabled = ramGraphCheckbox.state == .on
         let intervals = [2, 5, 10]
         draftSettings.ramPollInterval = intervals[safe: ramPollPopup.indexOfSelectedItem] ?? 5

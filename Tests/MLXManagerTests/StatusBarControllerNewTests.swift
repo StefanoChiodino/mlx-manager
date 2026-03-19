@@ -33,9 +33,9 @@ final class StatusBarControllerNewTests: XCTestCase {
         XCTAssertEqual(item?.title, "27,611 / 41,061  (67%)")
     }
 
-    // MARK: - Progress bar includes percentage
+    // MARK: - Display state for progress
 
-    func test_progressBar_includesPercentage() {
+    func test_displayState_processingFraction() {
         let view = MockStatusBarView()
         let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
         controller.serverDidStart()
@@ -43,25 +43,11 @@ final class StatusBarControllerNewTests: XCTestCase {
         state.serverStarted()
         state.handle(.progress(current: 4096, total: 41061, percentage: 9.97))
         controller.update(state: state)
-        // Icon should contain a percentage suffix
-        XCTAssertTrue(view.lastTitle?.contains("%") == true, "Expected % in title, got: \(view.lastTitle ?? "nil")")
-    }
-
-    // MARK: - Pie progress style
-
-    func test_progressStyle_pie() {
-        let view = MockStatusBarView()
-        var settings = AppSettings()
-        settings.progressStyle = .pie
-        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        controller.serverDidStart()
-        var state = ServerState()
-        state.serverStarted()
-        state.handle(.progress(current: 20000, total: 41061, percentage: 48.7))
-        controller.update(state: state, settings: settings)
-        // ~48.7% → ◑ (second quintile boundary)
-        let pieGlyphs = ["○", "◔", "◑", "◕", "●"]
-        XCTAssertTrue(pieGlyphs.contains(view.lastTitle ?? ""), "Expected pie glyph, got: \(view.lastTitle ?? "nil")")
+        if case let .processing(fraction) = view.lastState {
+            XCTAssertEqual(fraction, 4096.0 / 41061.0, accuracy: 0.001)
+        } else {
+            XCTFail("Expected .processing, got \(String(describing: view.lastState))")
+        }
     }
 
     // MARK: - Menu contains new items
@@ -69,38 +55,33 @@ final class StatusBarControllerNewTests: XCTestCase {
     func test_menuContainsLogItem() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        let titles = view.menuItems.map(\.title)
-        XCTAssertTrue(titles.contains("Show Log"))
+        XCTAssertTrue(view.menuItems.map(\.title).contains("Show Log"))
     }
 
     func test_menuContainsHistoryItem() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        let titles = view.menuItems.map(\.title)
-        XCTAssertTrue(titles.contains("Request History"))
+        XCTAssertTrue(view.menuItems.map(\.title).contains("Request History"))
     }
 
     func test_menuContainsSettings() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        let titles = view.menuItems.map(\.title)
-        XCTAssertTrue(titles.contains("Settings…"))
+        XCTAssertTrue(view.menuItems.map(\.title).contains("Settings…"))
     }
 
     func test_menuRAMGraph_hiddenByDefault() {
         let view = MockStatusBarView()
         let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
-        let titles = view.menuItems.map(\.title)
-        XCTAssertFalse(titles.contains("RAM Graph"))
+        XCTAssertFalse(view.menuItems.map(\.title).contains("RAM Graph"))
     }
 
     func test_menuRAMGraph_shownWhenEnabled() {
         let view = MockStatusBarView()
         var settings = AppSettings()
         settings.ramGraphEnabled = true
-        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {},
-                                             settings: settings)
-        let titles = view.menuItems.map(\.title)
-        XCTAssertTrue(titles.contains("RAM Graph"))
+        let _ = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {},
+                                    settings: settings)
+        XCTAssertTrue(view.menuItems.map(\.title).contains("RAM Graph"))
     }
 }
