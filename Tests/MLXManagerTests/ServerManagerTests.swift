@@ -30,6 +30,31 @@ final class MockLauncher: ProcessLauncher {
     }
 }
 
+final class MockPIDFile: PIDFileWriting {
+    var writtenPID: Int32?
+    var deleteCalled = false
+
+    func write(pid: Int32) throws {
+        writtenPID = pid
+    }
+
+    func delete() {
+        deleteCalled = true
+    }
+}
+
+// MARK: - Process Terminator Mock
+
+final class MockProcessTerminator: ProcessTerminating {
+    var killedPID: Int32?
+    var killedSignal: Int32?
+
+    func terminate(pid: Int32, signal: Int32) {
+        killedPID = pid
+        killedSignal = signal
+    }
+}
+
 // MARK: - Tests
 
 @Suite("ServerManager")
@@ -242,5 +267,131 @@ struct ServerManagerTests {
             "--chat-template-args",
             "{\"enable_thinking\":false}"
         ])
+    }
+
+    // MARK: - T12: start writes PID to PID file
+
+    @Test("start writes PID to PID file after successful launch")
+    func start_writesPIDFile() throws {
+        let launcher = MockLauncher()
+        let handle = MockProcessHandle()
+        handle.processIdentifier = 42
+        launcher.handleToReturn = handle
+        let pidFile = MockPIDFile()
+        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(pidFile.writtenPID == 42)
+    }
+
+    // MARK: - T13: stop deletes PID file
+
+    @Test("stop deletes PID file")
+    func stop_deletesPIDFile() throws {
+        let launcher = MockLauncher()
+        let pidFile = MockPIDFile()
+        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+        manager.stop()
+
+        #expect(pidFile.deleteCalled == true)
+    }
+
+    // MARK: - T14: process exit deletes PID file
+
+    @Test("process exit callback deletes PID file")
+    func processExit_deletesPIDFile() throws {
+        let launcher = MockLauncher()
+        let pidFile = MockPIDFile()
+        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+        launcher.lastOnExit?()
+
+        #expect(pidFile.deleteCalled == true)
+    }
+
+    // MARK: - T15: adoptProcess sets isRunning and pid
+
+    @Test("adoptProcess sets isRunning to true and pid to adopted PID")
+    func adoptProcess_setsRunningAndPID() throws {
+        let launcher = MockLauncher()
+        let terminator = MockProcessTerminator()
+        let manager = ServerManager(launcher: launcher, processTerminator: terminator)
+
+        try manager.adoptProcess(pid: 12345)
+
+        #expect(manager.isRunning == true)
+        #expect(manager.pid == 12345)
+    }
+
+    // MARK: - T16: stop on adopted process sends SIGTERM
+
+    @Test("stop on adopted process sends SIGTERM and clears state")
+    func stop_adopted_sendsSIGTERM() throws {
+        let launcher = MockLauncher()
+        let pidFile = MockPIDFile()
+        let terminator = MockProcessTerminator()
+        let manager = ServerManager(launcher: launcher, pidFile: pidFile, processTerminator: terminator)
+
+        try manager.adoptProcess(pid: 12345)
+        manager.stop()
+
+        #expect(terminator.killedPID == 12345)
+        #expect(terminator.killedSignal == 15) // SIGTERM
+        #expect(manager.isRunning == false)
+        #expect(pidFile.deleteCalled == true)
+    }
+
+    // MARK: - T17: start while adopted throws alreadyRunning
+
+    @Test("start while adopted throws alreadyRunning")
+    func start_whileAdopted_throws() throws {
+        let launcher = MockLauncher()
+        let terminator = MockProcessTerminator()
+        let manager = ServerManager(launcher: launcher, processTerminator: terminator)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.adoptProcess(pid: 12345)
+
+        #expect(throws: ServerError.alreadyRunning) {
+            try manager.start(config: config)
+        }
+    }
+
+    // MARK: - T18: adoptProcess when already running throws
+
+    @Test("adoptProcess when already running throws alreadyRunning")
+    func adoptProcess_whileRunning_throws() throws {
+        let launcher = MockLauncher()
+        let terminator = MockProcessTerminator()
+        let manager = ServerManager(launcher: launcher, processTerminator: terminator)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(throws: ServerError.alreadyRunning) {
+            try manager.adoptProcess(pid: 999)
+        }
     }
 }

@@ -8,6 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var serverState = ServerState()
     private var settings = AppSettings()
 
+    // Environment bootstrap
+    private var backgroundInstaller: EnvironmentInstaller?
+
     // History & monitoring
     private var requestHistory: [RequestRecord] = []
     private var ramSamples: [RAMSample] = []
@@ -22,11 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logPath = NSString("~/repos/mlx/Logs/server.log").expandingTildeInPath
     private let settingsURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/mlx-manager/settings.json")
+    private let pidFileURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".config/mlx-manager/server.pid")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = loadSettings()
         let presets = loadPresets()
-        serverManager = ServerManager(launcher: RealProcessLauncher())
+        let pidFile = PIDFile(url: pidFileURL)
+        serverManager = ServerManager(launcher: RealProcessLauncher(), pidFile: pidFile)
         serverManager.onExit = { [weak self] in self?.handleProcessExit() }
 
         let view = StatusBarView()
@@ -42,6 +48,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.onShowHistory = { [weak self] in self?.showHistory() }
         statusBarController.onShowRAMGraph = { [weak self] in self?.showRAMGraph() }
         statusBarController.onShowSettings = { [weak self] in self?.showSettings(presets: presets) }
+
+        recoverRunningServer(pidFile: pidFile)
+        bootstrapEnvironmentIfNeeded()
+    }
+
+    // MARK: - Environment bootstrap
+
+    private func bootstrapEnvironmentIfNeeded() {
+        let checker = EnvironmentChecker()
+        guard !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath) else { return }
+        statusBarController.environmentInstallStarted()
+        let inst = EnvironmentInstaller()
+        inst.onComplete = { [weak self] _ in
+            self?.statusBarController.environmentInstallFinished()
+            self?.backgroundInstaller = nil
+        }
+        inst.install()
+        backgroundInstaller = inst
+    }
+
+    // MARK: - PID recovery
+
+    private func recoverRunningServer(pidFile: PIDFile) {
+        let result = PIDRecovery().recover(pidFile: pidFile, isAlive: PIDFile.isProcessAlive)
+        switch result {
+        case .adopted(let pid):
+            try? serverManager.adoptProcess(pid: pid)
+            serverState = ServerState()
+            serverState.serverStarted()
+            statusBarController.serverDidStart()
+            startTailing()
+            if settings.ramGraphEnabled {
+                startRAMPolling(pid: pid)
+            }
+        case .staleFile, .noFile:
+            break
+        }
     }
 
     // MARK: - Server lifecycle
