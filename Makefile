@@ -29,6 +29,7 @@ sign: bundle
 	codesign --force --deep -s - $(BUNDLE_DIR)
 
 install: bundle sign
+	rm -rf $(INSTALL_PATH)
 	cp -r $(BUNDLE_DIR) $(INSTALL_PATH)
 
 uninstall:
