@@ -33,10 +33,10 @@ public struct RealProcessTerminator: ProcessTerminating {
 /// Manages starting, stopping, and restarting the MLX server process.
 public final class ServerManager {
     private let launcher: ProcessLauncher
-    private let pidFile: PIDFileWriting?
     private let processTerminator: ProcessTerminating
     private var process: ProcessHandle?
     private var adoptedPID: Int32?
+    private(set) public var adoptedPort: Int?
 
     /// Called when the server process exits unexpectedly.
     public var onExit: (() -> Void)?
@@ -55,11 +55,9 @@ public final class ServerManager {
 
     public init(
         launcher: ProcessLauncher,
-        pidFile: PIDFileWriting? = nil,
         processTerminator: ProcessTerminating = RealProcessTerminator()
     ) {
         self.launcher = launcher
-        self.pidFile = pidFile
         self.processTerminator = processTerminator
     }
 
@@ -88,12 +86,7 @@ public final class ServerManager {
 
         process = try launcher.launch(command: config.pythonPath, arguments: arguments) { [weak self] in
             self?.process = nil
-            self?.pidFile?.delete()
             self?.onExit?()
-        }
-
-        if let pid = process?.processIdentifier {
-            try? pidFile?.write(pid: pid)
         }
     }
 
@@ -102,11 +95,11 @@ public final class ServerManager {
         if let adopted = adoptedPID {
             processTerminator.terminate(pid: adopted, signal: 15) // SIGTERM
             adoptedPID = nil
+            adoptedPort = nil
         } else {
             process?.terminate()
             process = nil
         }
-        pidFile?.delete()
     }
 
     /// Restart: stop then start with the given config.
@@ -115,9 +108,10 @@ public final class ServerManager {
         try start(config: config)
     }
 
-    /// Adopt an externally-started process by PID.
-    public func adoptProcess(pid: Int32) throws {
+    /// Adopt an externally-started process by PID, optionally recording its port.
+    public func adoptProcess(pid: Int32, port: Int = 8080) throws {
         if isRunning { throw ServerError.alreadyRunning }
         adoptedPID = pid
+        adoptedPort = port
     }
 }

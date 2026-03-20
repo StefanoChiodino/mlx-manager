@@ -30,19 +30,6 @@ final class MockLauncher: ProcessLauncher {
     }
 }
 
-final class MockPIDFile: PIDFileWriting {
-    var writtenPID: Int32?
-    var deleteCalled = false
-
-    func write(pid: Int32) throws {
-        writtenPID = pid
-    }
-
-    func delete() {
-        deleteCalled = true
-    }
-}
-
 // MARK: - Process Terminator Mock
 
 final class MockProcessTerminator: ProcessTerminating {
@@ -329,71 +316,6 @@ struct ServerManagerTests {
         ])
     }
 
-    // MARK: - T12: start writes PID to PID file
-
-    @Test("start writes PID to PID file after successful launch")
-    func start_writesPIDFile() throws {
-        let launcher = MockLauncher()
-        let handle = MockProcessHandle()
-        handle.processIdentifier = 42
-        launcher.handleToReturn = handle
-        let pidFile = MockPIDFile()
-        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
-        let config = ServerConfig(
-            name: "test", model: "m", maxTokens: 1024,
-            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
-            promptCacheBytes: 10 * 1024 * 1024 * 1024,
-            trustRemoteCode: false, enableThinking: false,
-            extraArgs: [], pythonPath: "/usr/bin/python3"
-        )
-
-        try manager.start(config: config)
-
-        #expect(pidFile.writtenPID == 42)
-    }
-
-    // MARK: - T13: stop deletes PID file
-
-    @Test("stop deletes PID file")
-    func stop_deletesPIDFile() throws {
-        let launcher = MockLauncher()
-        let pidFile = MockPIDFile()
-        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
-        let config = ServerConfig(
-            name: "test", model: "m", maxTokens: 1024,
-            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
-            promptCacheBytes: 10 * 1024 * 1024 * 1024,
-            trustRemoteCode: false, enableThinking: false,
-            extraArgs: [], pythonPath: "/usr/bin/python3"
-        )
-
-        try manager.start(config: config)
-        manager.stop()
-
-        #expect(pidFile.deleteCalled == true)
-    }
-
-    // MARK: - T14: process exit deletes PID file
-
-    @Test("process exit callback deletes PID file")
-    func processExit_deletesPIDFile() throws {
-        let launcher = MockLauncher()
-        let pidFile = MockPIDFile()
-        let manager = ServerManager(launcher: launcher, pidFile: pidFile)
-        let config = ServerConfig(
-            name: "test", model: "m", maxTokens: 1024,
-            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
-            promptCacheBytes: 10 * 1024 * 1024 * 1024,
-            trustRemoteCode: false, enableThinking: false,
-            extraArgs: [], pythonPath: "/usr/bin/python3"
-        )
-
-        try manager.start(config: config)
-        launcher.lastOnExit?()
-
-        #expect(pidFile.deleteCalled == true)
-    }
-
     // MARK: - T15: adoptProcess sets isRunning and pid
 
     @Test("adoptProcess sets isRunning to true and pid to adopted PID")
@@ -413,9 +335,8 @@ struct ServerManagerTests {
     @Test("stop on adopted process sends SIGTERM and clears state")
     func stop_adopted_sendsSIGTERM() throws {
         let launcher = MockLauncher()
-        let pidFile = MockPIDFile()
         let terminator = MockProcessTerminator()
-        let manager = ServerManager(launcher: launcher, pidFile: pidFile, processTerminator: terminator)
+        let manager = ServerManager(launcher: launcher, processTerminator: terminator)
 
         try manager.adoptProcess(pid: 12345)
         manager.stop()
@@ -423,7 +344,20 @@ struct ServerManagerTests {
         #expect(terminator.killedPID == 12345)
         #expect(terminator.killedSignal == 15) // SIGTERM
         #expect(manager.isRunning == false)
-        #expect(pidFile.deleteCalled == true)
+    }
+
+    // MARK: - adoptProcess with port
+
+    @Test("adoptProcess with explicit port stores it")
+    func adoptProcess_withPort_storesPort() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+
+        try manager.adoptProcess(pid: 777, port: 9000)
+
+        #expect(manager.isRunning == true)
+        #expect(manager.pid == 777)
+        #expect(manager.adoptedPort == 9000)
     }
 
     // MARK: - T17: start while adopted throws alreadyRunning

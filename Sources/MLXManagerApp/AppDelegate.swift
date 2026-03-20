@@ -23,14 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logPath = NSString("~/repos/mlx/Logs/server.log").expandingTildeInPath
     private let settingsURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/mlx-manager/settings.json")
-    private let pidFileURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".config/mlx-manager/server.pid")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = loadSettings()
         let presets = loadPresets()
-        let pidFile = PIDFile(url: pidFileURL)
-        serverManager = ServerManager(launcher: RealProcessLauncher(), pidFile: pidFile)
+        serverManager = ServerManager(launcher: RealProcessLauncher())
         serverManager.onExit = { [weak self] in self?.handleProcessExit() }
 
         let view = StatusBarView()
@@ -47,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.onShowRAMGraph = { [weak self] in self?.showRAMGraph() }
         statusBarController.onShowSettings = { [weak self] in self?.showSettings(presets: presets) }
 
-        recoverRunningServer(pidFile: pidFile)
+        recoverRunningServer()
         bootstrapEnvironmentIfNeeded()
     }
 
@@ -66,22 +63,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         backgroundInstaller = inst
     }
 
-    // MARK: - PID recovery
+    // MARK: - Process recovery
 
-    private func recoverRunningServer(pidFile: PIDFile) {
-        let result = PIDRecovery().recover(pidFile: pidFile, isAlive: PIDFile.isProcessAlive)
-        switch result {
-        case .adopted(let pid):
-            try? serverManager.adoptProcess(pid: pid)
-            serverState = ServerState()
-            serverState.serverStarted()
-            statusBarController.serverDidStart()
-            startTailing()
-            if settings.ramGraphEnabled {
-                startRAMPolling(pid: pid)
-            }
-        case .staleFile, .noFile:
-            break
+    private func recoverRunningServer() {
+        let scanner = ProcessScanner(
+            pidLister: SystemPIDLister(),
+            argvReader: SystemProcessArgvReader()
+        )
+        guard let found = scanner.findMLXServer() else { return }
+        try? serverManager.adoptProcess(pid: found.pid, port: found.port)
+        serverState = ServerState()
+        serverState.serverStarted()
+        statusBarController.serverDidStart()
+        startTailing()
+        if settings.ramGraphEnabled {
+            startRAMPolling(pid: found.pid)
         }
     }
 

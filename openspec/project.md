@@ -69,8 +69,7 @@ MLXManager.app
 │   ├── StatusBarController.swift  # NSStatusItem management
 │   ├── LogParser.swift         # Parse progress/KV lines from server logs
 │   ├── ServerManager.swift     # Start/stop/restart MLX server process
-│   ├── PIDFile.swift           # PID file read/write/delete + liveness check
-│   ├── PIDRecovery.swift       # Recover running server on app relaunch
+│   ├── ProcessScanner.swift    # Detect any running mlx_lm.server via sysctl(KERN_PROCARGS2)
 │   ├── ConfigLoader.swift      # Load YAML presets
 │   └── Models/
 │       ├── Progress.swift      # Progress value type
