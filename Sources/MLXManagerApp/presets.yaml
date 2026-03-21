@@ -46,8 +46,9 @@ presets:
     pythonPath: "~/.mlx-manager/venv/bin/python"
 
   # MLX-VLM (vision-language) presets
-  - name: "Qwen3.5-35B-A3B Vision (4.9-bit)"
-    model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit"
+  # Your Qwen3.5-35B-A3B-4bit model is vision-capable!
+  - name: "Qwen3.5-35B-A3B-4bit (Vision)"
+    model: "mlx-community/Qwen3.5-35B-A3B-4bit"
     serverType: "mlxVLM"
     maxTokens: 40960
     port: 8082
