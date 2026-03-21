@@ -16,11 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var ramSamples: [RAMSample] = []
     private var ramPoller: RAMPoller?
 
+    // Log buffer
+    private var logLines: [(String, LogLineKind)] = []
+
     // Windows
-    private var logWindowController: LogWindowController?
     private var settingsWindowController: SettingsWindowController?
 
-    private let logPath = NSString("~/repos/mlx/Logs/server.log").expandingTildeInPath
     private let settingsURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/mlx-manager/settings.json")
 
@@ -122,10 +123,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func resetSession() {
         requestHistory = []
         ramSamples = []
-        logWindowController?.clear()
+        logLines = []
     }
 
     // MARK: - Log tailing
+
+    private var logPath: String {
+        NSString(string: settings.logPath).expandingTildeInPath
+    }
 
     private func startTailing() {
         logTailer?.stop()
@@ -147,7 +152,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Feed log window
         let kind = LogLineKind(event)
         let line = rawLine(for: event)
-        logWindowController?.append(line: line, kind: kind)
+        logLines.append((line, kind))
+        if logLines.count > 10_000 { logLines.removeFirst() }
 
         // Update state
         serverState.handle(event)
@@ -193,11 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Window actions
 
     private func showLog() {
-        if logWindowController == nil {
-            logWindowController = LogWindowController()
-        }
-        logWindowController?.showWindow(nil)
-        logWindowController?.window?.makeKeyAndOrderFront(nil)
+        statusBarController.showLogView(lines: logLines)
     }
 
     private func showHistory() {

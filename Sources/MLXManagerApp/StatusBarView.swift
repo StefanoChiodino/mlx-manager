@@ -192,6 +192,18 @@ final class StatusBarView: StatusBarViewProtocol {
     func closeHistoryView() {}
 
     func showLogView(lines: [(String, LogLineKind)]) {
-        // TODO: implement log popover UI
+        let popover = NSPopover()
+        popover.contentSize = NSSize(width: 500, height: 400)
+        popover.behavior = .transient
+
+        let viewController = NSViewController()
+        let logView = LogPopoverView(lines: lines)
+        logView.frame = NSRect(x: 0, y: 0, width: 500, height: 400)
+        viewController.view = logView
+
+        popover.contentViewController = viewController
+        popover.show(relativeTo: statusItem.button?.bounds ?? .zero,
+                     of: statusItem.button ?? NSView(),
+                     preferredEdge: .minY)
     }
 }
