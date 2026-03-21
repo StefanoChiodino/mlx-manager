@@ -162,7 +162,7 @@ final class SettingsWindowController: NSWindowController {
             ("Extra Args:",  detailExtraArgs),
         ]
 
-        for (label, field) in detailFields {
+        for (_, field) in detailFields {
             if let textField = field as? NSTextField {
                 textField.isEditable = true
                 textField.target = self
