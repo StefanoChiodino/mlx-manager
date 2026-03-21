@@ -84,27 +84,19 @@ final class ArcProgressView: NSView {
             track.stroke()
 
             // Foreground arc — clockwise from 12 o'clock
-            // Snap to full ring when fraction >= 0.99 since progress
-            // never reaches 1.0 (completion is signalled by KV Caches / HTTP 200)
             if fraction > 0 {
+                let startAngle: CGFloat = 90
+                let endAngle = startAngle - CGFloat(fraction * 360)
+                let arc = NSBezierPath()
+                arc.appendArc(withCenter: ringCenter,
+                              radius: ringRadius,
+                              startAngle: startAngle,
+                              endAngle: endAngle,
+                              clockwise: true)
+                arc.lineWidth = strokeWidth
+                arc.lineCapStyle = .round
                 NSColor.controlAccentColor.setStroke()
-                if fraction >= 0.99 {
-                    let full = NSBezierPath(ovalIn: arcRect.insetBy(dx: inset, dy: inset))
-                    full.lineWidth = strokeWidth
-                    full.stroke()
-                } else {
-                    let startAngle: CGFloat = 90
-                    let endAngle = startAngle - CGFloat(fraction * 360)
-                    let arc = NSBezierPath()
-                    arc.appendArc(withCenter: ringCenter,
-                                  radius: ringRadius,
-                                  startAngle: startAngle,
-                                  endAngle: endAngle,
-                                  clockwise: true)
-                    arc.lineWidth = strokeWidth
-                    arc.lineCapStyle = .round
-                    arc.stroke()
-                }
+                arc.stroke()
             }
 
             // Centered "M"

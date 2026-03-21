@@ -110,6 +110,17 @@ struct StatusBarControllerTests {
         #expect(view.lastState == .idle)
     }
 
+    @Test("Completion after processing shows full arc before idle")
+    func completionShowsFullArc() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        // Simulate a real completion: processing → KV Caches triggers idle with completedRequest
+        controller.update(state: makeCompletedState(current: 41056, total: 41061))
+        // Immediately after, the view should show full arc (fraction 1.0), not idle
+        #expect(view.lastState == .processing(fraction: 1.0))
+    }
+
     // MARK: - Menu building
 
     @Test("Menu includes preset names and quit")
@@ -304,6 +315,17 @@ struct StatusBarControllerTests {
         if status == .processing, let c = current, let t = total {
             state.handle(.progress(current: c, total: t, percentage: (Double(c) / Double(t)) * 100))
         }
+        return state
+    }
+
+    /// Creates a state that went processing → idle via a completion signal (completedRequest is set).
+    private func makeCompletedState(current: Int, total: Int) -> ServerState {
+        var state = ServerState()
+        state.serverStarted()
+        state.handle(.progress(current: current, total: total,
+                               percentage: (Double(current) / Double(total)) * 100))
+        // KV Caches triggers completion → idle
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: total))
         return state
     }
 }

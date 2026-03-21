@@ -36,6 +36,7 @@ public final class StatusBarController {
     private var running = false
     private var currentSettings: AppSettings
     private var installingEnvironment = false
+    private var completionIdleTimer: Timer?
 
     // Callbacks for window actions — set by AppDelegate
     public var onShowLog: (() -> Void)?
@@ -82,9 +83,22 @@ public final class StatusBarController {
             view.updateState(.offline)
             rebuildMenu(statusText: "Server: Offline")
         case .idle:
-            view.updateState(.idle)
+            if state.completedRequest != nil {
+                // Request just finished — show full arc briefly before idle
+                view.updateState(.processing(fraction: 1.0))
+                completionIdleTimer?.invalidate()
+                completionIdleTimer = Timer.scheduledTimer(
+                    withTimeInterval: 0.4, repeats: false
+                ) { [weak self] _ in
+                    self?.view.updateState(.idle)
+                }
+            } else {
+                view.updateState(.idle)
+            }
             rebuildMenu(statusText: "Server: Idle")
         case .processing:
+            completionIdleTimer?.invalidate()
+            completionIdleTimer = nil
             if let progress = state.progress {
                 let fraction = Double(progress.current) / Double(progress.total)
                 view.updateState(.processing(fraction: fraction))
