@@ -7,6 +7,18 @@ public enum LogEvent: Equatable {
     case httpCompletion
 }
 
+public enum LogLineKind: Equatable {
+    case progress, kvCaches, httpCompletion, warning, other
+
+    public init(_ event: LogEvent) {
+        switch event {
+        case .progress:       self = .progress
+        case .kvCaches:       self = .kvCaches
+        case .httpCompletion: self = .httpCompletion
+        }
+    }
+}
+
 /// Pure log-line classifier. No state, no I/O.
 public enum LogParser {
 

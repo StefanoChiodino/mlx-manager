@@ -1,18 +1,6 @@
 import AppKit
 import MLXManager
 
-enum LogLineKind {
-    case progress, kvCaches, httpCompletion, warning, other
-
-    init(_ event: LogEvent) {
-        switch event {
-        case .progress:       self = .progress
-        case .kvCaches:       self = .kvCaches
-        case .httpCompletion: self = .httpCompletion
-        }
-    }
-}
-
 final class LogWindowController: NSWindowController {
 
     private let textView: NSTextView

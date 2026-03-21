@@ -123,3 +123,23 @@ final class LogParserTests: XCTestCase {
         XCTAssertNil(LogParser.parse(line: line))
     }
 }
+
+import Testing
+
+@Test("LogLineKind maps progress event")
+func logLineKindMapsProgress() {
+    let kind = LogLineKind(.progress(current: 1, total: 10, percentage: 10.0))
+    #expect(kind == .progress)
+}
+
+@Test("LogLineKind maps kvCaches event")
+func logLineKindMapsKvCaches() {
+    let kind = LogLineKind(.kvCaches(gpuGB: 1.0, tokens: 100))
+    #expect(kind == .kvCaches)
+}
+
+@Test("LogLineKind maps httpCompletion event")
+func logLineKindMapsHttpCompletion() {
+    let kind = LogLineKind(.httpCompletion)
+    #expect(kind == .httpCompletion)
+}
