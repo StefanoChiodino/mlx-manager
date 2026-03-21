@@ -190,4 +190,8 @@ final class StatusBarView: StatusBarViewProtocol {
     }
 
     func closeHistoryView() {}
+
+    func showLogView(lines: [(String, LogLineKind)]) {
+        // TODO: implement log popover UI
+    }
 }

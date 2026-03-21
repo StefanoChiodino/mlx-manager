@@ -10,6 +10,7 @@ final class MockStatusBarView: StatusBarViewProtocol {
     var menuBuilt = false
     var ramGraphSamples: [RAMSample]?
     var historyRecords: [RequestRecord]?
+    var logLines: [(String, LogLineKind)]?
 
     func updateState(_ state: StatusBarDisplayState) {
         lastState = state
@@ -34,6 +35,10 @@ final class MockStatusBarView: StatusBarViewProtocol {
 
     func closeHistoryView() {
         historyRecords = nil
+    }
+
+    func showLogView(lines: [(String, LogLineKind)]) {
+        logLines = lines
     }
 }
 
@@ -273,6 +278,22 @@ struct StatusBarControllerTests {
         let titles = view.menuItems.map(\.title)
         #expect(titles.contains("4-bit 40k"))
         #expect(!titles.contains("Installing environment…"))
+    }
+
+    // MARK: - Log view
+
+    @Test("showLogView forwards lines to view")
+    func showLogViewForwardsToView() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        let lines: [(String, LogLineKind)] = [
+            ("test line", .other),
+            ("progress 1/10", .progress),
+        ]
+        controller.showLogView(lines: lines)
+        #expect(view.logLines?.count == 2)
+        #expect(view.logLines?[0].0 == "test line")
+        #expect(view.logLines?[0].1 == .other)
     }
 
     // MARK: - Helpers
