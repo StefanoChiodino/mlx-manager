@@ -4,27 +4,22 @@ import MLXManager
 // MARK: - ArcProgressView
 
 /// Custom view drawn into the NSStatusItem button.
-/// Shows a filled arc (clockwise from 12 o'clock) + percentage when processing,
-/// a solid green circle when idle, and an outline circle when offline.
+/// Shows a thick arc ring with a centred "M" in all states.
+/// Offline: muted ring. Idle: green ring. Processing: progress arc overlay.
 final class ArcProgressView: NSView {
 
     var displayState: StatusBarDisplayState = .offline {
         didSet {
             guard displayState != oldValue else { return }
-            invalidateIntrinsicContentSize()
             needsDisplay = true
         }
     }
 
     private let diameter: CGFloat = 13
-    private let gap: CGFloat = 4
-    private let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+    private let strokeWidth: CGFloat = 2.5
+    private let mFont = NSFont.systemFont(ofSize: 8, weight: .heavy)
 
     override var intrinsicContentSize: NSSize {
-        if case .processing = displayState {
-            let labelWidth = ("100%" as NSString).size(withAttributes: [.font: labelFont]).width
-            return NSSize(width: diameter + gap + labelWidth + 2, height: 22)
-        }
         return NSSize(width: diameter + 4, height: 22)
     }
 
@@ -35,56 +30,85 @@ final class ArcProgressView: NSView {
             width: diameter,
             height: diameter
         )
-        let center = NSPoint(x: arcRect.midX, y: arcRect.midY)
-        let radius = diameter / 2
-
         switch displayState {
 
         case .offline:
-            let path = NSBezierPath(ovalIn: arcRect.insetBy(dx: 1, dy: 1))
-            path.lineWidth = 1.5
-            NSColor.tertiaryLabelColor.setStroke()
-            path.stroke()
+            // Thick ring — muted
+            let inset = strokeWidth / 2
+            let ringRect = arcRect.insetBy(dx: inset, dy: inset)
+            let ring = NSBezierPath(ovalIn: ringRect)
+            ring.lineWidth = strokeWidth
+            NSColor.tertiaryLabelColor.withAlphaComponent(0.5).setStroke()
+            ring.stroke()
+
+            // Centered "M" — muted
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: mFont,
+                .foregroundColor: NSColor.tertiaryLabelColor
+            ]
+            let str = NSAttributedString(string: "M", attributes: attrs)
+            let strSize = str.size()
+            let mX = arcRect.midX - strSize.width / 2
+            let mY = arcRect.midY - strSize.height / 2
+            str.draw(at: NSPoint(x: mX, y: mY))
 
         case .idle:
-            NSColor.systemGreen.setFill()
-            NSBezierPath(ovalIn: arcRect).fill()
+            // Thick ring — green
+            let inset = strokeWidth / 2
+            let ringRect = arcRect.insetBy(dx: inset, dy: inset)
+            let ring = NSBezierPath(ovalIn: ringRect)
+            ring.lineWidth = strokeWidth
+            NSColor.systemGreen.setStroke()
+            ring.stroke()
+
+            // Centered "M"
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: mFont,
+                .foregroundColor: NSColor.labelColor
+            ]
+            let str = NSAttributedString(string: "M", attributes: attrs)
+            let strSize = str.size()
+            let mX = arcRect.midX - strSize.width / 2
+            let mY = arcRect.midY - strSize.height / 2
+            str.draw(at: NSPoint(x: mX, y: mY))
 
         case let .processing(fraction):
-            // Background track
-            let track = NSBezierPath(ovalIn: arcRect.insetBy(dx: 1, dy: 1))
-            track.lineWidth = 2
+            let inset = strokeWidth / 2
+            let ringCenter = NSPoint(x: arcRect.midX, y: arcRect.midY)
+            let ringRadius = diameter / 2 - inset
+
+            // Background track — dim ring
+            let track = NSBezierPath(ovalIn: arcRect.insetBy(dx: inset, dy: inset))
+            track.lineWidth = strokeWidth
             NSColor.tertiaryLabelColor.withAlphaComponent(0.4).setStroke()
             track.stroke()
 
-            // Foreground arc — clockwise from top (90° in AppKit coords)
+            // Foreground arc — clockwise from 12 o'clock
             if fraction > 0 {
                 let startAngle: CGFloat = 90
                 let endAngle = startAngle - CGFloat(fraction * 360)
                 let arc = NSBezierPath()
-                arc.appendArc(withCenter: center,
-                              radius: radius - 1,
+                arc.appendArc(withCenter: ringCenter,
+                              radius: ringRadius,
                               startAngle: startAngle,
                               endAngle: endAngle,
                               clockwise: true)
-                arc.lineWidth = 2
+                arc.lineWidth = strokeWidth
                 arc.lineCapStyle = .round
                 NSColor.controlAccentColor.setStroke()
                 arc.stroke()
             }
 
-            // Percentage label to the right of the arc
-            let pct = Int((fraction * 100).rounded())
-            let label = "\(pct)%"
+            // Centered "M"
             let attrs: [NSAttributedString.Key: Any] = [
-                .font: labelFont,
+                .font: mFont,
                 .foregroundColor: NSColor.labelColor
             ]
-            let str = NSAttributedString(string: label, attributes: attrs)
+            let str = NSAttributedString(string: "M", attributes: attrs)
             let strSize = str.size()
-            let labelX = arcRect.maxX + gap
-            let labelY = (bounds.height - strSize.height) / 2
-            str.draw(at: NSPoint(x: labelX, y: labelY))
+            let mX = arcRect.midX - strSize.width / 2
+            let mY = arcRect.midY - strSize.height / 2
+            str.draw(at: NSPoint(x: mX, y: mY))
         }
     }
 }
