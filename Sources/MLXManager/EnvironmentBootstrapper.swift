@@ -54,9 +54,17 @@ public final class EnvironmentBootstrapper {
         }
 
         // Step 3: uv pip install mlx-lm
-        let pipOK = step(uvPath, ["pip", "install", "mlx-lm",
-                                   "--python", Self.pythonPath], label: "Installing mlx-lm…")
-        DispatchQueue.main.async { self.onComplete?(pipOK) }
+        let mlxLMOK = step(uvPath, ["pip", "install", "mlx-lm",
+                                    "--python", Self.pythonPath], label: "Installing mlx-lm…")
+        guard mlxLMOK else {
+            DispatchQueue.main.async { self.onComplete?(false) }
+            return
+        }
+
+        // Step 4: uv pip install mlx-vlm
+        let mlxVLMOK = step(uvPath, ["pip", "install", "mlx-vlm",
+                                     "--python", Self.pythonPath], label: "Installing mlx-vlm…")
+        DispatchQueue.main.async { self.onComplete?(mlxVLMOK) }
     }
 
     private func resolveUV() -> String? {

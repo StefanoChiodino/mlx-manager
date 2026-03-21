@@ -14,7 +14,7 @@ public protocol ProcessHandle: AnyObject {
 
 /// Abstraction over process launching for testability.
 public protocol ProcessLauncher {
-    func launch(command: String, arguments: [String], onExit: @escaping () -> Void) throws -> ProcessHandle
+    func launch(command: String, arguments: [String], logPath: String?, onExit: @escaping () -> Void) throws -> ProcessHandle
 }
 
 /// Abstraction over kill(pid, signal) for testability.
@@ -37,6 +37,9 @@ public final class ServerManager {
     private var process: ProcessHandle?
     private var adoptedPID: Int32?
     private(set) public var adoptedPort: Int?
+
+    /// Path to redirect server stderr to. Set before calling start().
+    public var logPath: String?
 
     /// Called when the server process exits unexpectedly.
     public var onExit: (() -> Void)?
@@ -65,26 +68,42 @@ public final class ServerManager {
     public func start(config: ServerConfig) throws {
         if isRunning { throw ServerError.alreadyRunning }
 
-        var arguments = [
-            "-m", "mlx_lm.server",
+        var arguments: [String] = [
+            "-m", config.serverType.serverEntryName,
             "--model", config.model,
-            "--max-tokens", String(config.maxTokens),
             "--port", String(config.port),
-            "--prefill-step-size", String(config.prefillStepSize),
-            "--prompt-cache-size", String(config.promptCacheSize),
-            "--prompt-cache-bytes", String(config.promptCacheBytes)
+            "--prefill-step-size", String(config.prefillStepSize)
         ]
+
+        // MLX-LM uses --max-tokens, --prompt-cache-size, --prompt-cache-bytes
+        // MLX-VLM uses --max-kv-size instead
+        switch config.serverType {
+        case .mlxLM:
+            arguments.append(contentsOf: [
+                "--max-tokens", String(config.maxTokens),
+                "--prompt-cache-size", String(config.promptCacheSize),
+                "--prompt-cache-bytes", String(config.promptCacheBytes)
+            ])
+        case .mlxVLM:
+            // For MLX-VLM, interpret maxTokens as max-kv-size
+            arguments.append(contentsOf: [
+                "--max-kv-size", String(config.maxTokens)
+            ])
+        }
 
         if config.trustRemoteCode {
             arguments.append("--trust-remote-code")
         }
 
-        arguments.append("--chat-template-args")
-        arguments.append("{\"enable_thinking\":\(config.enableThinking ? "true" : "false")}")
+        // Only add --chat-template-args for MLX-LM (MLX-VLM doesn't use it)
+        if config.serverType == .mlxLM {
+            arguments.append("--chat-template-args")
+            arguments.append("{\"enable_thinking\":\(config.enableThinking ? "true" : "false")}")
+        }
 
         arguments.append(contentsOf: config.extraArgs)
 
-        process = try launcher.launch(command: config.pythonPath, arguments: arguments) { [weak self] in
+        process = try launcher.launch(command: config.pythonPath, arguments: arguments, logPath: logPath) { [weak self] in
             self?.process = nil
             self?.onExit?()
         }

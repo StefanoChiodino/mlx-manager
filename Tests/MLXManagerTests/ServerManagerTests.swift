@@ -17,13 +17,15 @@ final class MockProcessHandle: ProcessHandle {
 final class MockLauncher: ProcessLauncher {
     var launchedCommand: String?
     var launchedArguments: [String]?
+    var launchedLogPath: String?
     var launchCount = 0
     var handleToReturn = MockProcessHandle()
     var lastOnExit: (() -> Void)?
 
-    func launch(command: String, arguments: [String], onExit: @escaping () -> Void) throws -> ProcessHandle {
+    func launch(command: String, arguments: [String], logPath: String?, onExit: @escaping () -> Void) throws -> ProcessHandle {
         launchedCommand = command
         launchedArguments = arguments
+        launchedLogPath = logPath
         launchCount += 1
         lastOnExit = onExit
         return handleToReturn
@@ -382,6 +384,43 @@ struct ServerManagerTests {
         }
     }
 
+    // MARK: - start passes logPath to launcher
+
+    @Test("start passes logPath to launcher")
+    func start_passesLogPath() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        manager.logPath = "/tmp/test-server.log"
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedLogPath == "/tmp/test-server.log")
+    }
+
+    @Test("start passes nil logPath when not set")
+    func start_passesNilLogPath() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "test", model: "m", maxTokens: 1024,
+            port: 8080, prefillStepSize: 4096, promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false, enableThinking: false,
+            extraArgs: [], pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedLogPath == nil)
+    }
+
     // MARK: - T18: adoptProcess when already running throws
 
     @Test("adoptProcess when already running throws alreadyRunning")
@@ -561,4 +600,148 @@ struct ServerManagerTests {
         #expect(launcher.launchedArguments?.contains("--chat-template-args") == true)
         #expect(launcher.launchedArguments?.contains("{\"enable_thinking\":false}") == true)
     }
+
+    // MARK: - T27: MLX-VLM server uses correct arguments
+
+    @Test("start uses MLX-VLM entry point")
+    func startUsesMLXVLM() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "Qwen3.5 Vision",
+            model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            maxTokens: 40960,
+            port: 8082,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
+            serverType: .mlxVLM,
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        #expect(launcher.launchedCommand == "/usr/bin/python3")
+        #expect(launcher.launchedArguments?.contains("-m") == true)
+        if let args = launcher.launchedArguments,
+           let mIndex = args.firstIndex(where: { $0 == "-m" }) {
+            #expect(args[mIndex + 1] == "mlx_vlm.server")
+        }
+    }
+
+    @Test("start uses --max-kv-size for MLX-VLM instead of --max-tokens")
+    func startUsesMaxKVSizeForMLXVLM() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "Qwen3.5 Vision",
+            model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            maxTokens: 40960,
+            port: 8082,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
+            serverType: .mlxVLM,
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        let args = launcher.launchedArguments ?? []
+        #expect(args.contains("--max-kv-size"), "Expected --max-kv-size argument")
+        let maxKVSizeIndex = args.firstIndex(where: { $0 == "--max-kv-size" })!
+        #expect(args[maxKVSizeIndex + 1] == "40960")
+        #expect(!args.contains("--max-tokens"), "Should not use --max-tokens for MLX-VLM")
+    }
+
+    @Test("start excludes --prompt-cache-size and --prompt-cache-bytes for MLX-VLM")
+    func startExcludesPromptCacheArgsForMLXVLM() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "Qwen3.5 Vision",
+            model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            maxTokens: 40960,
+            port: 8082,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: [],
+            serverType: .mlxVLM,
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        let args = launcher.launchedArguments ?? []
+        #expect(!args.contains("--prompt-cache-size"), "Should not use --prompt-cache-size for MLX-VLM")
+        #expect(!args.contains("--prompt-cache-bytes"), "Should not use --prompt-cache-bytes for MLX-VLM")
+    }
+
+    @Test("start excludes --chat-template-args for MLX-VLM")
+    func startExcludesChatTemplateArgsForMLXVLM() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "Qwen3.5 Vision",
+            model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            maxTokens: 40960,
+            port: 8082,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: true,
+            extraArgs: [],
+            serverType: .mlxVLM,
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        let args = launcher.launchedArguments ?? []
+        #expect(!args.contains("--chat-template-args"), "Should not use --chat-template-args for MLX-VLM")
+    }
+
+    @Test("start uses all MLX-VLM arguments correctly")
+    func startUsesAllMLXVLMArguments() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let config = ServerConfig(
+            name: "Qwen3.5 Vision",
+            model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            maxTokens: 40960,
+            port: 8082,
+            prefillStepSize: 2048,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: false,
+            extraArgs: ["--kv-bits", "4"],
+            serverType: .mlxVLM,
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+
+        let args = launcher.launchedArguments ?? []
+        #expect(args == [
+            "-m", "mlx_vlm.server",
+            "--model", "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
+            "--port", "8082",
+            "--prefill-step-size", "2048",
+            "--max-kv-size", "40960",
+            "--trust-remote-code",
+            "--kv-bits", "4"
+        ])
+    }
 }
+

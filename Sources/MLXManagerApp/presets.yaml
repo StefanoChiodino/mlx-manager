@@ -1,6 +1,8 @@
 presets:
+  # MLX-LM (text-only) presets
   - name: "4-bit 40k"
     model: "mlx-community/Qwen3.5-35B-A3B-4bit"
+    serverType: "mlxLM"
     maxTokens: 40960
     port: 8081
     prefillStepSize: 4096
@@ -11,6 +13,7 @@ presets:
     pythonPath: "~/.mlx-manager/venv/bin/python"
   - name: "4-bit 80k"
     model: "mlx-community/Qwen3.5-35B-A3B-4bit"
+    serverType: "mlxLM"
     maxTokens: 81920
     port: 8081
     prefillStepSize: 4096
@@ -21,6 +24,7 @@ presets:
     pythonPath: "~/.mlx-manager/venv/bin/python"
   - name: "8-bit 40k"
     model: "mlx-community/Qwen3.5-35B-A3B-8bit"
+    serverType: "mlxLM"
     maxTokens: 40960
     port: 8081
     prefillStepSize: 4096
@@ -31,8 +35,46 @@ presets:
     pythonPath: "~/.mlx-manager/venv/bin/python"
   - name: "8-bit 80k"
     model: "mlx-community/Qwen3.5-35B-A3B-8bit"
+    serverType: "mlxLM"
     maxTokens: 81920
     port: 8081
+    prefillStepSize: 4096
+    promptCacheSize: 4
+    promptCacheBytes: 10737418240
+    trustRemoteCode: true
+    enableThinking: false
+    pythonPath: "~/.mlx-manager/venv/bin/python"
+
+  # MLX-VLM (vision-language) presets
+  - name: "Qwen3.5-35B-A3B Vision (4.9-bit)"
+    model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit"
+    serverType: "mlxVLM"
+    maxTokens: 40960
+    port: 8082
+    prefillStepSize: 4096
+    promptCacheSize: 4
+    promptCacheBytes: 10737418240
+    trustRemoteCode: true
+    enableThinking: false
+    pythonPath: "~/.mlx-manager/venv/bin/python"
+
+  # Additional vision models (optional)
+  - name: "Llama3.2 11B Vision"
+    model: "mlx-community/llama3.2-11b-vision-instruct-4bit"
+    serverType: "mlxVLM"
+    maxTokens: 40960
+    port: 8083
+    prefillStepSize: 4096
+    promptCacheSize: 4
+    promptCacheBytes: 10737418240
+    trustRemoteCode: true
+    enableThinking: false
+    pythonPath: "~/.mlx-manager/venv/bin/python"
+  - name: "Pixtral 12B Vision"
+    model: "mlx-community/Pixtral-12B-Inst-4bit"
+    serverType: "mlxVLM"
+    maxTokens: 40960
+    port: 8084
     prefillStepSize: 4096
     promptCacheSize: 4
     promptCacheBytes: 10737418240
