@@ -133,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startTailing() {
+        loadHistoricalLog()
         logTailer?.stop()
         logTailer = LogTailer(
             path: logPath,
@@ -146,6 +147,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
         logTailer?.start()
+    }
+
+    private func loadHistoricalLog() {
+        let path = logPath
+        guard let data = FileManager.default.contents(atPath: path),
+              let content = String(data: data, encoding: .utf8) else { return }
+        let result = HistoricalLogLoader.load(from: content, maxLines: 100)
+        logLines.append(contentsOf: result.lines)
+        requestHistory.append(contentsOf: result.records)
     }
 
     private func handleLogEvent(_ event: LogEvent) {
