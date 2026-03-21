@@ -64,7 +64,8 @@ public struct ServerState: Equatable {
             }
 
         case .httpCompletion:
-            if status == .processing {
+            if status == .processing || status == .idle {
+                if requestStartedAt == nil { requestStartedAt = Date() }
                 emitRecord(tokens: tokens ?? 0)
                 status = .idle
                 progress = nil

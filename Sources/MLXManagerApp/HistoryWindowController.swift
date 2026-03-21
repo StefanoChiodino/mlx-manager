@@ -41,7 +41,7 @@ public final class HistoryChartView: NSView {
         super.updateTrackingAreas()
         if let old = trackingArea { removeTrackingArea(old) }
         let area = NSTrackingArea(rect: bounds,
-                                  options: [.activeInKeyWindow, .mouseMoved, .mouseEnteredAndExited],
+                                  options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited],
                                   owner: self, userInfo: nil)
         addTrackingArea(area)
         trackingArea = area
