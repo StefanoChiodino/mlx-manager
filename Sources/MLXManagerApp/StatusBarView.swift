@@ -230,4 +230,10 @@ final class StatusBarView: StatusBarViewProtocol {
                      of: statusItem.button ?? NSView(),
                      preferredEdge: .minY)
     }
+
+    func updateLogLine(_ line: String?) {
+        DispatchQueue.main.async { [weak self] in
+            self?.statusItem.button?.title = line.map { " \($0)" } ?? ""
+        }
+    }
 }

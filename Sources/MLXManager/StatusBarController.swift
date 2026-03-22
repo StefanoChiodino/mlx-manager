@@ -24,6 +24,7 @@ public protocol StatusBarViewProtocol: AnyObject {
     func showHistoryView(records: [RequestRecord])
     func closeHistoryView()
     func showLogView(lines: [(String, LogLineKind)])
+    func updateLogLine(_ line: String?)
 }
 
 /// Manages the menu bar icon state and menu, driven by ServerState.
@@ -211,5 +212,9 @@ public final class StatusBarController {
 
     public func showLogView(lines: [(String, LogLineKind)]) {
         view.showLogView(lines: lines)
+    }
+
+    public func updateLogLine(_ line: String?) {
+        view.updateLogLine(line)
     }
 }
