@@ -7,6 +7,7 @@ public protocol FileHandleReading: AnyObject {
     func seek(toFileOffset offset: UInt64)
     func readDataToEndOfFile() -> Data
     var offsetInFile: UInt64 { get }
+    var inode: UInt64 { get }
 }
 
 /// Abstraction over file system watching for testability.
@@ -14,6 +15,7 @@ public protocol FileWatcher: AnyObject {
     func startWatching(path: String, handler: @escaping () -> Void) -> Bool
     func stopWatching()
 }
+
 
 /// Tails a log file and emits parsed LogEvents via a callback.
 public final class LogTailer {
@@ -23,6 +25,7 @@ public final class LogTailer {
     private let fileHandleFactory: (String) -> FileHandleReading?
     private let watcher: FileWatcher
     private let onEvent: EventHandler
+    private let inodeReader: (String) -> UInt64?
     private var fileHandle: FileHandleReading?
     private var lastOffset: UInt64 = 0
     private var lineBuffer: String = ""
@@ -31,12 +34,14 @@ public final class LogTailer {
         path: String,
         fileHandleFactory: @escaping (String) -> FileHandleReading?,
         watcher: FileWatcher,
-        onEvent: @escaping EventHandler
+        onEvent: @escaping EventHandler,
+        inodeReader: @escaping (String) -> UInt64? = { p in var s = stat(); return stat(p, &s) == 0 ? UInt64(s.st_ino) : nil }
     ) {
         self.path = path
         self.fileHandleFactory = fileHandleFactory
         self.watcher = watcher
         self.onEvent = onEvent
+        self.inodeReader = inodeReader
     }
 
     /// Start tailing from the current end of file.
@@ -57,6 +62,12 @@ public final class LogTailer {
     }
 
     private func readNewContent() {
+        // Detect log rotation: on-disk inode differs from our open handle's inode
+        if let diskInode = inodeReader(path), let handle = fileHandle, diskInode != handle.inode {
+            reopenFile()
+            return
+        }
+
         guard let handle = fileHandle else { return }
 
         // Detect truncation: file is shorter than our last read position
@@ -84,5 +95,21 @@ public final class LogTailer {
                 onEvent(event)
             }
         }
+    }
+
+    private func reopenFile() {
+        watcher.stopWatching()
+        fileHandle = nil
+        lastOffset = 0
+        lineBuffer = ""
+
+        guard let handle = fileHandleFactory(path) else { return }
+        fileHandle = handle
+        lastOffset = 0
+        _ = watcher.startWatching(path: path) { [weak self] in
+            self?.readNewContent()
+        }
+        // Read any content already in the new file from the start
+        readNewContent()
     }
 }

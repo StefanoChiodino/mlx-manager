@@ -7,6 +7,7 @@ final class MockFileHandle: FileHandleReading {
     var data: Data = Data()
     var currentOffset: UInt64 = 0
     var seekToEndCalled = false
+    var inode: UInt64 = 1
 
     var offsetInFile: UInt64 { currentOffset }
 
@@ -64,14 +65,16 @@ final class LogTailerTests: XCTestCase {
     private func makeSUT(
         fileHandle: MockFileHandle? = MockFileHandle(),
         watcher: MockFileWatcher = MockFileWatcher(),
-        onEvent: @escaping (LogEvent) -> Void = { _ in }
+        onEvent: @escaping (LogEvent) -> Void = { _ in },
+        inodeReader: ((String) -> UInt64?)? = nil
     ) -> (LogTailer, MockFileHandle?, MockFileWatcher) {
         let handle = fileHandle
         let tailer = LogTailer(
             path: "/tmp/test.log",
             fileHandleFactory: { _ in handle },
             watcher: watcher,
-            onEvent: onEvent
+            onEvent: onEvent,
+            inodeReader: inodeReader ?? { _ in handle?.inode }
         )
         return (tailer, handle, watcher)
     }
@@ -190,5 +193,91 @@ final class LogTailerTests: XCTestCase {
         )
         tailer.start()
         XCTAssertFalse(watcher.startCalled)
+    }
+
+    // MARK: - 9. log rotation — new file events are emitted after rotation
+
+    func test_logRotation_emitsEventsFromNewFileAfterRotation() {
+        var events: [LogEvent] = []
+        let handle = MockFileHandle()
+        handle.inode = 100
+
+        // newHandle simulates the replacement file
+        let newHandle = MockFileHandle()
+        newHandle.inode = 200
+
+        var rotated = false
+        var handles: [MockFileHandle] = [handle, newHandle]
+        var handleIndex = 0
+        let watcher = MockFileWatcher()
+        let tailer = LogTailer(
+            path: "/tmp/test.log",
+            fileHandleFactory: { _ in
+                let h = handles[min(handleIndex, handles.count - 1)]
+                handleIndex += 1
+                return h
+            },
+            watcher: watcher,
+            onEvent: { events.append($0) },
+            inodeReader: { _ in rotated ? 200 : 100 }
+        )
+
+        tailer.start()
+
+        // Write a line to the original file
+        handle.append("2026-03-18 23:33:38 - INFO - Prompt processing progress: 4096/41061\n")
+        watcher.simulateChange()
+        XCTAssertEqual(events.count, 1)
+
+        // Simulate rotation: disk inode changes to 200, new file has fresh content
+        rotated = true
+        newHandle.append("2026-03-18 23:34:18 - INFO - Prompt processing progress: 41056/41061\n")
+        watcher.simulateChange()
+
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events[1], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100))
+    }
+
+    // MARK: - 10. log rotation — line buffer is reset on rotation
+
+    func test_logRotation_clearsLineBufferOnRotation() {
+        var events: [LogEvent] = []
+        let handle = MockFileHandle()
+        handle.inode = 100
+
+        let newHandle = MockFileHandle()
+        newHandle.inode = 200
+
+        var rotated = false
+        var handleIndex = 0
+        let handles: [MockFileHandle] = [handle, newHandle]
+        let watcher = MockFileWatcher()
+        let tailer = LogTailer(
+            path: "/tmp/test.log",
+            fileHandleFactory: { _ in
+                let h = handles[min(handleIndex, handles.count - 1)]
+                handleIndex += 1
+                return h
+            },
+            watcher: watcher,
+            onEvent: { events.append($0) },
+            inodeReader: { _ in rotated ? 200 : 100 }
+        )
+
+        tailer.start()
+
+        // Write a partial line (no newline) to original file
+        handle.append("2026-03-18 23:33:38 - INFO - Prompt processing progress: 4096/41061")
+        watcher.simulateChange()
+        XCTAssertEqual(events.count, 0, "Partial line should not emit")
+
+        // Simulate rotation with a complete line in the new file
+        rotated = true
+        newHandle.append("2026-03-18 23:34:18 - INFO - Prompt processing progress: 41056/41061\n")
+        watcher.simulateChange()
+
+        // The partial line from the old file must not bleed into the new file's line
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100))
     }
 }

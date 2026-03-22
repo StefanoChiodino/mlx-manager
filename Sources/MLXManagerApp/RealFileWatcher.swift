@@ -25,6 +25,12 @@ final class RealFileHandle: FileHandleReading {
     var offsetInFile: UInt64 {
         (try? handle.offset()) ?? 0
     }
+
+    var inode: UInt64 {
+        var st = Darwin.stat()
+        guard fstat(handle.fileDescriptor, &st) == 0 else { return 0 }
+        return UInt64(st.st_ino)
+    }
 }
 
 /// Production FileWatcher using GCD DispatchSource.

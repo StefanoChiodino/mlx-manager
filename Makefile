@@ -29,8 +29,10 @@ sign: bundle
 	codesign --force --deep -s - $(BUNDLE_DIR)
 
 install: bundle sign
+	-killall $(APP_NAME) 2>/dev/null; sleep 1
 	rm -rf $(INSTALL_PATH)
 	cp -r $(BUNDLE_DIR) $(INSTALL_PATH)
+	open $(INSTALL_PATH)
 
 uninstall:
 	rm -rf $(INSTALL_PATH)
