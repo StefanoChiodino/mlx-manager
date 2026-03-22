@@ -26,7 +26,10 @@ Add support for `mlx-vlm` as a second server backend alongside the existing `mlx
 - `ServerType` (raw values `"mlxLM"` / `"mlxVLM"`) already has `serverEntryName` and `serverModule` computed properties — these are correct and are kept.
 - `ServerConfig` already has `serverType: ServerType` (default `.mlxLM`).
 - `EnvironmentBootstrapper` currently installs only `mlx-lm` into a single venv (`~/.mlx-manager/venv`). It needs to be made backend-aware.
-- `ServerManager.start()` still hardcodes `mlx_lm.server` — it does not yet use `serverType`.
+- `EnvironmentInstaller` is a thin app-layer adapter over `EnvironmentBootstrapper`, forwarding `venvPath`/`pythonPath` as static properties. It must be updated whenever `EnvironmentBootstrapper`'s API changes.
+- `ServerManager.start()` already uses `config.serverType.serverEntryName` for the module name, and has a partial `switch config.serverType` block that incorrectly reuses `maxTokens` as `--max-kv-size` for the VLM case. This logic must be replaced by the `ServerArgBuilder` approach — not extended.
+- `AppDelegate.recoverRunningServer()` calls `scanner.findMLXServer()` (hardcoded to lm). It must be updated to pass the active preset's `serverType`.
+- `AppDelegate.bootstrapEnvironmentIfNeeded()` checks `EnvironmentInstaller.pythonPath` (lm only) and installs the lm venv. It must be updated to check and install based on the active preset's backend.
 
 ---
 
@@ -41,7 +44,7 @@ public enum ServerType: String, Codable, CaseIterable {
 }
 ```
 
-The YAML key `backend:` maps to `serverType` via a custom `CodingKeys` mapping, or the YAML uses `serverType` directly. Either approach is fine — implementer's choice — but must be documented in a code comment. Existing YAML without this key decodes as `.mlxLM`.
+The YAML key is `serverType` (matching the Swift property name directly — no custom `CodingKeys` mapping needed). Existing YAML without this key decodes as `.mlxLM` via Swift's default `Codable` behaviour when the field has a default value.
 
 ### `ServerConfig` additions
 
@@ -142,7 +145,7 @@ Cross-contamination is explicit: `findServer(backend: .mlxLM)` must return `nil`
 
 Port extraction (`--port` argument) is unchanged.
 
-Call sites in `AppDelegate` pass the active preset's `serverType` when scanning on launch.
+**`recoverRunningServer()` behaviour:** On launch, the app uses the first preset in the list as the "expected" backend. `recoverRunningServer()` calls `findServer(backend: presets.first?.serverType ?? .mlxLM)`. If a running server is found, it is adopted regardless of which preset the user might later select — this matches existing behaviour (adopt-first, configure-later).
 
 ---
 
@@ -167,6 +170,8 @@ Install steps (same structure, different paths/packages):
 2. `uv pip install <package> --python <pythonPath>`
 
 Where `<package>` is `mlx-lm` for `.mlxLM` and `mlx-vlm` for `.mlxVLM`.
+
+**`bootstrapEnvironmentIfNeeded()` behaviour:** On launch, check whether the active preset's venv exists (`EnvironmentBootstrapper.pythonPath(for: preset.serverType)`). If absent, run the bootstrapper for that backend only. No eager install of the other backend's venv — it is installed on demand via the Settings UI.
 
 ---
 
@@ -225,8 +230,9 @@ New mlx-vlm example presets added:
 | `Sources/MLXManager/ServerArgBuilder.swift` | New — protocol + `MLXLmArgBuilder` + `MLXVlmArgBuilder` |
 | `Sources/MLXManager/ServerManager.swift` | Use builder; remove hardcoded `mlx_lm.server` args |
 | `Sources/MLXManager/ProcessScanner.swift` | Rename to `findServer(backend:)`; dual detection patterns |
-| `Sources/MLXManager/EnvironmentBootstrapper.swift` | Add `backend` param; dual venv paths/packages |
-| `Sources/MLXManagerApp/AppDelegate.swift` | Use `withResolvedPythonPath()`; pass `serverType` to scanner and bootstrapper |
+| `Sources/MLXManager/EnvironmentBootstrapper.swift` | Add `backend` param; dual venv paths/packages; remove existing mlx-vlm install steps |
+| `Sources/MLXManagerApp/EnvironmentInstaller.swift` | Update `venvPath`/`pythonPath` from static properties to static methods forwarding `backend` param |
+| `Sources/MLXManagerApp/AppDelegate.swift` | Use `withResolvedPythonPath()`; pass `serverType` to scanner; bootstrap only active preset's backend |
 | `Sources/MLXManagerApp/SettingsWindowController.swift` | Backend segmented control; show/hide fields; backend column in table |
 | `Sources/MLXManagerApp/presets.yaml` | Add vlm example presets |
 | `Tests/MLXManagerTests/ServerManagerTests.swift` | Tests for both arg builders |
@@ -245,7 +251,8 @@ Key test cases:
 
 **Arg builders:**
 
-- `MLXLmArgBuilder` emits all expected flags including `--chat-template-args`
+- `MLXLmArgBuilder` emits all expected flags including `--chat-template-args` with `enable_thinking: false`
+- `MLXLmArgBuilder` emits `--chat-template-args` with `enable_thinking: true` when `enableThinking == true`
 - `MLXLmArgBuilder` omits `--trust-remote-code` when `trustRemoteCode == false`
 - `MLXVlmArgBuilder` emits correct flags for all-defaults config
 - `MLXVlmArgBuilder` omits `--kv-bits`, `--kv-group-size`, `--quantized-kv-start` when `kvBits == 0`
@@ -265,6 +272,7 @@ Key test cases:
 - YAML round-trip for both backends including all new vlm fields
 - Existing preset YAML without `serverType` key decodes as `.mlxLM`
 - `withResolvedPythonPath()` expands tilde, preserves all other fields
+- `withResolvedPythonPath()` returns identical config when `pythonPath` contains no tilde (no-op path)
 
 **EnvironmentBootstrapper:**
 
