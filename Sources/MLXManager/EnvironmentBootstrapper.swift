@@ -2,28 +2,41 @@ import Foundation
 
 /// Bootstraps the managed Python environment using `uv`.
 ///
-/// Steps:
-/// 1. Locate `uv`; if absent, run `uvInstallCommand`.
-/// 2. `uv venv ~/.mlx-manager/venv --python 3.12`
-/// 3. `uv pip install mlx-lm --python <venvPython>`
+/// Each backend gets its own venv:
+/// - mlxLM:  ~/.mlx-manager/venv      (installs mlx-lm)
+/// - mlxVLM: ~/.mlx-manager/venv-vlm  (installs mlx-vlm)
 public final class EnvironmentBootstrapper {
 
     public var onOutput: ((String) -> Void)?
     public var onComplete: ((Bool) -> Void)?
 
+    private let backend: ServerType
     private let uvLocator: UVLocator
     private let runner: CommandRunner
-    /// Runs the uv installer; returns true on success. nil = use default curl installer.
     private let uvInstallCommand: (() -> Bool)?
 
-    public static let venvPath   = NSString("~/.mlx-manager/venv").expandingTildeInPath
-    public static let pythonPath = venvPath + "/bin/python"
+    public static func venvPath(for backend: ServerType) -> String {
+        switch backend {
+        case .mlxLM:  return NSString("~/.mlx-manager/venv").expandingTildeInPath
+        case .mlxVLM: return NSString("~/.mlx-manager/venv-vlm").expandingTildeInPath
+        }
+    }
+
+    public static func pythonPath(for backend: ServerType) -> String {
+        venvPath(for: backend) + "/bin/python"
+    }
+
+    // Legacy accessors (mlxLM defaults) for backwards compatibility
+    public static var venvPath: String { venvPath(for: .mlxLM) }
+    public static var pythonPath: String { pythonPath(for: .mlxLM) }
 
     public init(
+        backend: ServerType = .mlxLM,
         uvLocator: UVLocator = UVLocator(),
         runner: CommandRunner,
         uvInstallCommand: (() -> Bool)? = nil
     ) {
+        self.backend = backend
         self.uvLocator = uvLocator
         self.runner = runner
         self.uvInstallCommand = uvInstallCommand
@@ -39,43 +52,32 @@ public final class EnvironmentBootstrapper {
     // MARK: - Private
 
     private func runInstall() {
-        // Step 1: locate uv
         guard let uvPath = resolveUV() else {
             emit("Error: could not locate or install uv\n")
             DispatchQueue.main.async { self.onComplete?(false) }
             return
         }
 
-        // Step 2: uv venv
-        let venvOK = step(uvPath, ["venv", Self.venvPath, "--python", "3.12"], label: "Creating venv…")
+        let venv = Self.venvPath(for: backend)
+        let python = Self.pythonPath(for: backend)
+        let package = backend == .mlxLM ? "mlx-lm" : "mlx-vlm"
+
+        let venvOK = step(uvPath, ["venv", venv, "--python", "3.12"], label: "Creating venv…")
         guard venvOK else {
             DispatchQueue.main.async { self.onComplete?(false) }
             return
         }
 
-        // Step 3: uv pip install mlx-lm
-        let mlxLMOK = step(uvPath, ["pip", "install", "mlx-lm",
-                                    "--python", Self.pythonPath], label: "Installing mlx-lm…")
-        guard mlxLMOK else {
-            DispatchQueue.main.async { self.onComplete?(false) }
-            return
-        }
-
-        // Step 4: uv pip install mlx-vlm
-        let mlxVLMOK = step(uvPath, ["pip", "install", "mlx-vlm",
-                                     "--python", Self.pythonPath], label: "Installing mlx-vlm…")
-        DispatchQueue.main.async { self.onComplete?(mlxVLMOK) }
+        let installOK = step(uvPath, ["pip", "install", package, "--python", python],
+                             label: "Installing \(package)…")
+        DispatchQueue.main.async { self.onComplete?(installOK) }
     }
 
     private func resolveUV() -> String? {
         if let path = uvLocator.locate() { return path }
-
-        // uv not found — run installer
         emit("uv not found. Installing uv…\n")
         let installer = uvInstallCommand ?? defaultUVInstaller
         guard installer() else { return nil }
-
-        // After install, uv lands at the first candidate path
         return uvLocator.locate()
     }
 

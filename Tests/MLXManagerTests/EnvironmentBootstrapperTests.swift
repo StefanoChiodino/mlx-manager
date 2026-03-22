@@ -1,4 +1,5 @@
 import Testing
+import XCTest
 import Foundation
 @testable import MLXManager
 
@@ -110,5 +111,89 @@ struct EnvironmentBootstrapperTests {
         }
 
         #expect(success == false)
+    }
+
+    // MARK: T8 — each backend installs exactly one package
+
+    @Test("default (mlxLM) bootstrapper installs exactly one pip package: mlx-lm")
+    func test_install_lmBootstrapper_installsExactlyOnePackage() async throws {
+        let spy = SpyCommandRunner()
+        let bootstrapper = EnvironmentBootstrapper(
+            backend: .mlxLM,
+            uvLocator: UVLocator(fileExists: { path in path == UVLocator.candidatePaths[0] }),
+            runner: spy,
+            uvInstallCommand: nil
+        )
+
+        _ = await withCheckedContinuation { continuation in
+            bootstrapper.onComplete = { _ in continuation.resume(returning: ()) }
+            bootstrapper.install()
+        }
+
+        let pipCalls = spy.calls.filter { URL(fileURLWithPath: $0.command).lastPathComponent == "uv" }
+            .filter { $0.arguments.first == "pip" && $0.arguments.contains("install") }
+
+        // New design: one pip install per bootstrapper instance
+        #expect(pipCalls.count == 1, "expected exactly 1 pip install call for mlxLM backend")
+        #expect(pipCalls.first?.arguments.contains("mlx-lm") == true, "expected pip install mlx-lm")
+    }
+}
+
+// MARK: - Backend-aware tests (XCTest)
+
+class EnvironmentBootstrapperBackendTests: XCTestCase {
+
+    func test_pythonPath_lm() {
+        let path = EnvironmentBootstrapper.pythonPath(for: .mlxLM)
+        XCTAssertTrue(path.contains(".mlx-manager/venv/bin/python"))
+        XCTAssertFalse(path.contains("venv-vlm"))
+    }
+
+    func test_pythonPath_vlm() {
+        let path = EnvironmentBootstrapper.pythonPath(for: .mlxVLM)
+        XCTAssertTrue(path.contains(".mlx-manager/venv-vlm/bin/python"))
+    }
+
+    func test_venvPath_lm() {
+        let path = EnvironmentBootstrapper.venvPath(for: .mlxLM)
+        XCTAssertTrue(path.contains(".mlx-manager/venv"))
+        XCTAssertFalse(path.contains("venv-vlm"))
+    }
+
+    func test_venvPath_vlm() {
+        let path = EnvironmentBootstrapper.venvPath(for: .mlxVLM)
+        XCTAssertTrue(path.contains(".mlx-manager/venv-vlm"))
+    }
+
+    func test_install_lm_usesMLXLmPackage() async throws {
+        let spy = SpyCommandRunner()
+        let bootstrapper = EnvironmentBootstrapper(
+            backend: .mlxLM,
+            uvLocator: UVLocator(fileExists: { path in path == UVLocator.candidatePaths[0] }),
+            runner: spy
+        )
+        _ = await withCheckedContinuation { continuation in
+            bootstrapper.onComplete = { _ in continuation.resume(returning: ()) }
+            bootstrapper.install()
+        }
+        let allPipCalls = spy.calls.filter { $0.arguments.first == "pip" }
+        XCTAssertTrue(allPipCalls.contains(where: { $0.arguments.contains("mlx-lm") }), "expected pip install mlx-lm")
+        XCTAssertFalse(allPipCalls.contains(where: { $0.arguments.contains("mlx-vlm") }), "LM bootstrapper must not install mlx-vlm")
+    }
+
+    func test_install_vlm_usesMLXVlmPackage() async throws {
+        let spy = SpyCommandRunner()
+        let bootstrapper = EnvironmentBootstrapper(
+            backend: .mlxVLM,
+            uvLocator: UVLocator(fileExists: { path in path == UVLocator.candidatePaths[0] }),
+            runner: spy
+        )
+        _ = await withCheckedContinuation { continuation in
+            bootstrapper.onComplete = { _ in continuation.resume(returning: ()) }
+            bootstrapper.install()
+        }
+        let allPipCalls = spy.calls.filter { $0.arguments.first == "pip" }
+        XCTAssertTrue(allPipCalls.contains(where: { $0.arguments.contains("mlx-vlm") }), "expected pip install mlx-vlm")
+        XCTAssertFalse(allPipCalls.contains(where: { $0.arguments.contains("mlx-lm") }), "VLM bootstrapper must not install mlx-lm")
     }
 }

@@ -4,8 +4,17 @@ import MLXManager
 /// Thin adapter: public API for the app layer, delegates to `EnvironmentBootstrapper`.
 final class EnvironmentInstaller {
 
-    static let venvPath   = EnvironmentBootstrapper.venvPath
-    static let pythonPath = EnvironmentBootstrapper.pythonPath
+    static func venvPath(for backend: ServerType) -> String {
+        EnvironmentBootstrapper.venvPath(for: backend)
+    }
+
+    static func pythonPath(for backend: ServerType) -> String {
+        EnvironmentBootstrapper.pythonPath(for: backend)
+    }
+
+    // Legacy (mlxLM default) for any call sites not yet updated
+    static var venvPath: String { venvPath(for: .mlxLM) }
+    static var pythonPath: String { pythonPath(for: .mlxLM) }
 
     var onOutput: ((String) -> Void)? {
         didSet { bootstrapper.onOutput = onOutput }
@@ -16,13 +25,11 @@ final class EnvironmentInstaller {
 
     private let bootstrapper: EnvironmentBootstrapper
 
-    init() {
-        bootstrapper = EnvironmentBootstrapper(runner: ProcessCommandRunner())
+    init(backend: ServerType = .mlxLM) {
+        bootstrapper = EnvironmentBootstrapper(backend: backend, runner: ProcessCommandRunner())
     }
 
-    func install() {
-        bootstrapper.install()
-    }
+    func install() { bootstrapper.install() }
 
     func cancel() {
         // EnvironmentBootstrapper runs on a GCD queue; cancellation is best-effort
