@@ -1256,33 +1256,8 @@ git commit -m "feat: backend-aware EnvironmentBootstrapper with separate venvs p
 - Modify: `Sources/MLXManagerApp/AppDelegate.swift`
 
 > **Known limitation:** `recoverRunningServer()` uses `presets.first?.serverType` to decide which backend to scan for. If the user has VLM presets listed first but an LM server running, recovery will miss it. This is an intentional simplification — multi-backend recovery is out of scope.
-
-### Step 6.0: Add regression test for `resolvedPythonPath` field-dropping bug
-
-> **Context:** The current `AppDelegate.resolvedPythonPath(_:)` silently drops `port`, `prefillStepSize`, `promptCacheSize`, `promptCacheBytes`, `trustRemoteCode`, `enableThinking`, `serverType`, and all VLM fields when reconstructing `ServerConfig`. This has always been a latent bug; adding VLM fields makes it critical. Write a test that exposes this before we fix it.
-
-Add to `Tests/MLXManagerTests/ServerConfigCodableTests.swift` (in the `ServerConfigVLMFieldTests` suite):
-
-```swift
-@Test("withResolvedPythonPath preserves serverType and port (regression: old resolvedPythonPath dropped them)")
-func test_withResolvedPythonPath_preservesServerTypeAndPort() {
-    let config = ServerConfig(
-        name: "t", model: "m", maxTokens: 100,
-        port: 9999,
-        serverType: .mlxVLM,
-        kvBits: 4,
-        pythonPath: "~/.mlx-manager/venv-vlm/bin/python"
-    )
-    let resolved = config.withResolvedPythonPath()
-    #expect(resolved.port == 9999)
-    #expect(resolved.serverType == .mlxVLM)
-    #expect(resolved.kvBits == 4)
-}
-```
-
-This test already passes once `withResolvedPythonPath()` is implemented (Task 1), but it documents the regression that the old approach had and confirms the fix is correct.
-
-- [ ] Add regression test above to `Tests/MLXManagerTests/ServerConfigCodableTests.swift`
+>
+> **Regression coverage:** The field-dropping bug in the old `AppDelegate.resolvedPythonPath(_:)` (it silently dropped `port`, `serverType`, all VLM fields, etc.) is already covered by `test_withResolvedPythonPath_preservesAllFields` added in Task 1. No additional test is needed here.
 
 ### Step 6.1: Replace `resolvedPythonPath(_:)` with `withResolvedPythonPath()`
 
