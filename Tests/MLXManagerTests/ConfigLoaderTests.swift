@@ -75,32 +75,30 @@ final class ConfigLoaderTests: XCTestCase {
         XCTAssertEqual(presets[0].name, "4-bit 40k")
     }
 
-    /// Spec: 4-bit 40k preset includes --chat-template-args with thinking disabled
+    /// Spec: 4-bit 40k preset has enableThinking = false
     func test_load_4bit40k_hasThinkingDisabledArg() throws {
         let presets = try loadValid()
         guard presets.count >= 1 else { return }
         let preset = presets[0]
-        XCTAssertTrue(preset.extraArgs.contains("--chat-template-args"),
-                      "Missing --chat-template-args")
-        XCTAssertTrue(preset.extraArgs.contains(#"{"enable_thinking":false}"#),
-                      "Missing thinking disabled JSON")
+        XCTAssertFalse(preset.enableThinking, "Expected enableThinking == false")
     }
 
-    /// Spec: 8-bit 80k preset has only --trust-remote-code
+    /// Spec: 8-bit 80k preset has no extra args (trustRemoteCode is a field, not extraArgs)
     func test_load_8bit80k_hasTrustRemoteCodeOnly() throws {
         let presets = try loadValid()
         guard presets.count >= 4 else { return }
         let preset = presets[3]
-        XCTAssertEqual(preset.extraArgs, ["--trust-remote-code"])
+        XCTAssertTrue(preset.trustRemoteCode, "Expected trustRemoteCode == true")
+        XCTAssertEqual(preset.extraArgs, [])
     }
 
-    /// Spec: All presets include --trust-remote-code
+    /// Spec: All presets have trustRemoteCode = true
     func test_load_allPresets_haveTrustRemoteCode() throws {
         let presets = try loadValid()
         for preset in presets {
             XCTAssertTrue(
-                preset.extraArgs.contains("--trust-remote-code"),
-                "\(preset.name) missing --trust-remote-code"
+                preset.trustRemoteCode,
+                "\(preset.name) missing trustRemoteCode"
             )
         }
     }
