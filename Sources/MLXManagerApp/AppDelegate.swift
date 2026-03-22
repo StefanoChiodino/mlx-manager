@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings = loadSettings()
         let presets = loadPresets()
         serverManager = ServerManager(launcher: RealProcessLauncher())
+        serverManager.logPath = logPath
         serverManager.onExit = { [weak self] in self?.handleProcessExit() }
 
         let view = StatusBarView()
@@ -45,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.onShowRAMGraph = { [weak self] in self?.showRAMGraph() }
         statusBarController.onShowSettings = { [weak self] in self?.showSettings(presets: presets) }
 
-        recoverRunningServer()
+        recoverRunningServer(presets: presets)
         bootstrapEnvironmentIfNeeded()
     }
 
@@ -66,12 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Process recovery
 
-    private func recoverRunningServer() {
+    private func recoverRunningServer(presets: [ServerConfig]) {
         let scanner = ProcessScanner(
             pidLister: SystemPIDLister(),
             argvReader: SystemProcessArgvReader()
         )
-        guard let found = scanner.findMLXServer() else { return }
+        guard let found = scanner.findServer(backend: presets.first?.serverType ?? .mlxLM) else { return }
         try? serverManager.adoptProcess(pid: found.pid, port: found.port)
         serverState = ServerState()
         serverState.serverStarted()

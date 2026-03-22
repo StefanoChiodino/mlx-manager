@@ -1,4 +1,5 @@
 import Testing
+import XCTest
 @testable import MLXManager
 
 // MARK: - Test Doubles
@@ -55,7 +56,7 @@ struct ProcessScannerTests {
             pidLister: StubPIDLister([]),
             argvReader: StubProcessArgvReader([:])
         )
-        #expect(scanner.findMLXServer() == nil)
+        #expect(scanner.findServer(backend: .mlxLM) == nil)
     }
 
     // T5
@@ -68,7 +69,7 @@ struct ProcessScannerTests {
                 2: ["/bin/bash", "-c", "echo hello"]
             ])
         )
-        #expect(scanner.findMLXServer() == nil)
+        #expect(scanner.findServer(backend: .mlxLM) == nil)
     }
 
     // T6
@@ -80,7 +81,7 @@ struct ProcessScannerTests {
                 42: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port", "8080"]
             ])
         )
-        #expect(scanner.findMLXServer() == DiscoveredProcess(pid: 42, port: 8080))
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 42, port: 8080))
     }
 
     // T7
@@ -92,7 +93,7 @@ struct ProcessScannerTests {
                 7: ["mlx_lm.server", "--port", "8080"]
             ])
         )
-        #expect(scanner.findMLXServer() == DiscoveredProcess(pid: 7, port: 8080))
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 7, port: 8080))
     }
 
     // T8
@@ -104,7 +105,7 @@ struct ProcessScannerTests {
                 9: ["/home/user/.venv/bin/python3", "/home/user/.venv/lib/python3.11/site-packages/mlx_lm/server.py", "--port", "8080"]
             ])
         )
-        #expect(scanner.findMLXServer() == DiscoveredProcess(pid: 9, port: 8080))
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 9, port: 8080))
     }
 
     // T9
@@ -116,7 +117,7 @@ struct ProcessScannerTests {
                 5: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port", "9000"]
             ])
         )
-        #expect(scanner.findMLXServer()?.port == 9000)
+        #expect(scanner.findServer(backend: .mlxLM)?.port == 9000)
     }
 
     // T10
@@ -128,7 +129,7 @@ struct ProcessScannerTests {
                 5: ["/usr/bin/python3", "-m", "mlx_lm.server"]
             ])
         )
-        #expect(scanner.findMLXServer()?.port == 8080)
+        #expect(scanner.findServer(backend: .mlxLM)?.port == 8080)
     }
 
     // T11
@@ -140,7 +141,7 @@ struct ProcessScannerTests {
                 5: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port"]
             ])
         )
-        #expect(scanner.findMLXServer()?.port == 8080)
+        #expect(scanner.findServer(backend: .mlxLM)?.port == 8080)
     }
 
     // T12
@@ -152,7 +153,7 @@ struct ProcessScannerTests {
                 5: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port", "abc"]
             ])
         )
-        #expect(scanner.findMLXServer()?.port == 8080)
+        #expect(scanner.findServer(backend: .mlxLM)?.port == 8080)
     }
 
     // T13
@@ -165,7 +166,19 @@ struct ProcessScannerTests {
                 2: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port", "8080"]
             ])
         )
-        #expect(scanner.findMLXServer() == DiscoveredProcess(pid: 2, port: 8080))
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 2, port: 8080))
+    }
+
+    // T8b
+    @Test("argv contains path ending in /mlx_lm.server (venv bin script) — returns DiscoveredProcess")
+    func test_findMLXServer_venvBinScriptInArgv_returnsDiscoveredProcess() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([11]),
+            argvReader: StubProcessArgvReader([
+                11: ["/opt/homebrew/.../Python", "/Users/user/repos/mlx/venv/bin/mlx_lm.server", "--port", "8080"]
+            ])
+        )
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 11, port: 8080))
     }
 
     // T14
@@ -178,6 +191,75 @@ struct ProcessScannerTests {
                 20: ["/usr/bin/python3", "-m", "mlx_lm.server", "--port", "9000"]
             ])
         )
-        #expect(scanner.findMLXServer() == DiscoveredProcess(pid: 10, port: 8080))
+        #expect(scanner.findServer(backend: .mlxLM) == DiscoveredProcess(pid: 10, port: 8080))
+    }
+}
+
+// MARK: - ProcessScannerBackendTests (XCTest)
+
+class ProcessScannerBackendTests: XCTestCase {
+
+    // VLM detection tests
+
+    func test_findServer_vlm_moduleFlag() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([10]),
+            argvReader: StubProcessArgvReader([
+                10: ["/venv/bin/python", "-m", "mlx_vlm.server", "--port", "8082"]
+            ])
+        )
+        XCTAssertEqual(scanner.findServer(backend: .mlxVLM), DiscoveredProcess(pid: 10, port: 8082))
+    }
+
+    func test_findServer_vlm_bareElement() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([11]),
+            argvReader: StubProcessArgvReader([
+                11: ["mlx_vlm.server", "--port", "8082"]
+            ])
+        )
+        XCTAssertEqual(scanner.findServer(backend: .mlxVLM), DiscoveredProcess(pid: 11, port: 8082))
+    }
+
+    func test_findServer_vlm_scriptPath() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([12]),
+            argvReader: StubProcessArgvReader([
+                12: ["/python3", "/site-packages/mlx_vlm/server.py", "--port", "8082"]
+            ])
+        )
+        XCTAssertEqual(scanner.findServer(backend: .mlxVLM), DiscoveredProcess(pid: 12, port: 8082))
+    }
+
+    func test_findServer_vlm_venvBinScript() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([13]),
+            argvReader: StubProcessArgvReader([
+                13: ["/python3", "/venv-vlm/bin/mlx_vlm.server", "--port", "8082"]
+            ])
+        )
+        XCTAssertEqual(scanner.findServer(backend: .mlxVLM), DiscoveredProcess(pid: 13, port: 8082))
+    }
+
+    // Cross-contamination tests
+
+    func test_findServer_lm_doesNotMatchVLMProcess() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([20]),
+            argvReader: StubProcessArgvReader([
+                20: ["/python3", "-m", "mlx_vlm.server", "--port", "8082"]
+            ])
+        )
+        XCTAssertNil(scanner.findServer(backend: .mlxLM))
+    }
+
+    func test_findServer_vlm_doesNotMatchLMProcess() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([21]),
+            argvReader: StubProcessArgvReader([
+                21: ["/python3", "-m", "mlx_lm.server", "--port", "8081"]
+            ])
+        )
+        XCTAssertNil(scanner.findServer(backend: .mlxVLM))
     }
 }
