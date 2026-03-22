@@ -639,7 +639,7 @@ struct ServerManagerTests {
         let config = ServerConfig(
             name: "Qwen3.5 Vision",
             model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
-            maxTokens: 40960,
+            maxTokens: 0,
             port: 8082,
             prefillStepSize: 4096,
             promptCacheSize: 4,
@@ -648,6 +648,7 @@ struct ServerManagerTests {
             enableThinking: false,
             extraArgs: [],
             serverType: .mlxVLM,
+            maxKvSize: 40960,
             pythonPath: "/usr/bin/python3"
         )
 
@@ -718,15 +719,19 @@ struct ServerManagerTests {
         let config = ServerConfig(
             name: "Qwen3.5 Vision",
             model: "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
-            maxTokens: 40960,
+            maxTokens: 0,
             port: 8082,
             prefillStepSize: 2048,
             promptCacheSize: 4,
             promptCacheBytes: 10 * 1024 * 1024 * 1024,
             trustRemoteCode: true,
             enableThinking: false,
-            extraArgs: ["--kv-bits", "4"],
+            extraArgs: [],
             serverType: .mlxVLM,
+            kvBits: 4,
+            kvGroupSize: 64,
+            maxKvSize: 40960,
+            quantizedKvStart: 0,
             pythonPath: "/usr/bin/python3"
         )
 
@@ -738,9 +743,11 @@ struct ServerManagerTests {
             "--model", "spicyneuron/Qwen3.5-35B-A3B-MLX-vision-4.9-bit",
             "--port", "8082",
             "--prefill-step-size", "2048",
-            "--max-kv-size", "40960",
             "--trust-remote-code",
-            "--kv-bits", "4"
+            "--kv-bits", "4",
+            "--kv-group-size", "64",
+            "--quantized-kv-start", "0",
+            "--max-kv-size", "40960"
         ])
     }
 }

@@ -68,40 +68,12 @@ public final class ServerManager {
     public func start(config: ServerConfig) throws {
         if isRunning { throw ServerError.alreadyRunning }
 
-        var arguments: [String] = [
-            "-m", config.serverType.serverEntryName,
-            "--model", config.model,
-            "--port", String(config.port),
-            "--prefill-step-size", String(config.prefillStepSize)
-        ]
-
-        // MLX-LM uses --max-tokens, --prompt-cache-size, --prompt-cache-bytes
-        // MLX-VLM uses --max-kv-size instead
+        let builder: ServerArgBuilder
         switch config.serverType {
-        case .mlxLM:
-            arguments.append(contentsOf: [
-                "--max-tokens", String(config.maxTokens),
-                "--prompt-cache-size", String(config.promptCacheSize),
-                "--prompt-cache-bytes", String(config.promptCacheBytes)
-            ])
-        case .mlxVLM:
-            // For MLX-VLM, interpret maxTokens as max-kv-size
-            arguments.append(contentsOf: [
-                "--max-kv-size", String(config.maxTokens)
-            ])
+        case .mlxLM:  builder = MLXLmArgBuilder()
+        case .mlxVLM: builder = MLXVlmArgBuilder()
         }
-
-        if config.trustRemoteCode {
-            arguments.append("--trust-remote-code")
-        }
-
-        // Only add --chat-template-args for MLX-LM (MLX-VLM doesn't use it)
-        if config.serverType == .mlxLM {
-            arguments.append("--chat-template-args")
-            arguments.append("{\"enable_thinking\":\(config.enableThinking ? "true" : "false")}")
-        }
-
-        arguments.append(contentsOf: config.extraArgs)
+        let arguments = builder.arguments(for: config)
 
         process = try launcher.launch(command: config.pythonPath, arguments: arguments, logPath: logPath) { [weak self] in
             self?.process = nil
