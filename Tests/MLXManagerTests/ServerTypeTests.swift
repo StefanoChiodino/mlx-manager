@@ -23,12 +23,6 @@ struct ServerTypeTests {
         #expect(ServerType.mlxVLM.descriptiveName == "MLX-VLM (vision)")
     }
 
-    @Test("has serverModule property")
-    func test_serverModule() async throws {
-        #expect(ServerType.mlxLM.serverModule == "mlx_lm.server")
-        #expect(ServerType.mlxVLM.serverModule == "mlx_vlm.server")
-    }
-
     @Test("has serverEntryName property")
     func test_serverEntryName() async throws {
         #expect(ServerType.mlxLM.serverEntryName == "mlx_lm.server")
