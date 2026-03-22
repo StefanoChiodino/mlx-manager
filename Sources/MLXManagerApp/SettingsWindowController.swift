@@ -16,7 +16,6 @@ final class SettingsWindowController: NSWindowController {
     private let detailName         = NSTextField()
     private let detailPythonPath   = NSTextField()
     private let detailModel        = NSTextField()
-    private let detailServerType   = NSPopUpButton()
     private let detailPort         = NSTextField()
     private let detailMaxTokens    = NSTextField()
     private let detailPrefill      = NSTextField()
@@ -25,6 +24,36 @@ final class SettingsWindowController: NSWindowController {
     private let detailExtraArgs    = NSTextField()
     private let detailTrustRemote  = NSButton(checkboxWithTitle: "Trust Remote Code", target: nil, action: nil)
     private let detailEnableThinking = NSButton(checkboxWithTitle: "Enable Thinking", target: nil, action: nil)
+
+    // Backend selector
+    private let detailBackend = NSSegmentedControl(
+        labels: ["LM", "VLM"],
+        trackingMode: .selectOne,
+        target: nil,
+        action: nil
+    )
+
+    // mlx-vlm only fields
+    private let detailKvBits           = NSTextField()
+    private let detailKvGroupSize      = NSTextField()
+    private let detailMaxKvSize        = NSTextField()
+    private let detailQuantizedKvStart = NSTextField()
+
+    // Labels for show/hide (LM-only rows)
+    private let detailMaxTokensLabel      = NSTextField(labelWithString: "Context:")
+    private let detailCacheSizeLabel      = NSTextField(labelWithString: "Cache Size:")
+    private let detailCacheBytesLabel     = NSTextField(labelWithString: "Cache Bytes:")
+    private let detailEnableThinkingLabel = NSTextField(labelWithString: "")  // checkbox row uses NSView()
+
+    // Labels for show/hide (VLM-only rows)
+    private let detailKvBitsLabel            = NSTextField(labelWithString: "KV Bits:")
+    private let detailKvGroupSizeLabel       = NSTextField(labelWithString: "KV Group Size:")
+    private let detailMaxKvSizeLabel         = NSTextField(labelWithString: "Max KV Size:")
+    private let detailQuantizedKvStartLabel  = NSTextField(labelWithString: "KV Start:")
+
+    // Install button (needs to be a property so we can update its title)
+    private let installButton = NSButton(title: "Install / Reinstall mlx-lm",
+                                         target: nil, action: nil)
 
     // MARK: - General tab
     private let ramGraphCheckbox = NSButton(checkboxWithTitle: "Enable RAM graph", target: nil, action: nil)
@@ -129,8 +158,14 @@ final class SettingsWindowController: NSWindowController {
         modelCol.width = 130
         modelCol.isEditable = false
 
+        let backendCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("listBackend"))
+        backendCol.title = "Backend"
+        backendCol.width = 55
+        backendCol.isEditable = false
+
         presetListTable.addTableColumn(nameCol)
         presetListTable.addTableColumn(modelCol)
+        presetListTable.addTableColumn(backendCol)
         presetListTable.headerView = NSTableHeaderView()
 
         listScrollView.documentView = presetListTable
@@ -150,51 +185,112 @@ final class SettingsWindowController: NSWindowController {
         rowButtons.spacing = 4
 
         // — Detail form —
-        let detailFields: [(String, Any)] = [
-            ("Name:",        detailName),
-            ("Python Path:", detailPythonPath),
-            ("Model:",       detailModel),
-            ("Server Type:", detailServerType),
-            ("Port:",        detailPort),
-            ("Context:",     detailMaxTokens),
-            ("Prefill:",     detailPrefill),
-            ("Cache Size:",  detailCacheSize),
-            ("Cache Bytes:", detailCacheBytes),
-            ("Extra Args:",  detailExtraArgs),
+        let textDetailFields: [(NSTextField, NSTextField)] = [
+            (detailMaxTokensLabel, detailMaxTokens),
+            (detailCacheSizeLabel, detailCacheSize),
+            (detailCacheBytesLabel, detailCacheBytes),
         ]
-
-        for (_, field) in detailFields {
-            if let textField = field as? NSTextField {
-                textField.isEditable = true
-                textField.target = self
-                textField.action = #selector(detailFieldChanged(_:))
-            } else if let popup = field as? NSPopUpButton {
-                popup.target = self
-                popup.action = #selector(detailFieldChanged(_:))
-                // Populate server type options
-                popup.addItems(withTitles: ServerType.allCases.map { $0.descriptiveName })
-                popup.isEnabled = false
-            }
+        for (_, field) in textDetailFields {
+            field.isEditable = true
+            field.target = self
+            field.action = #selector(detailFieldChanged(_:))
         }
+
+        let allTextFields: [NSTextField] = [
+            detailName, detailPythonPath, detailModel,
+            detailPort, detailPrefill, detailExtraArgs
+        ]
+        for f in allTextFields {
+            f.isEditable = true
+            f.target = self
+            f.action = #selector(detailFieldChanged(_:))
+        }
+
         detailTrustRemote.target = self
         detailTrustRemote.action = #selector(detailCheckboxChanged(_:))
         detailEnableThinking.target = self
         detailEnableThinking.action = #selector(detailCheckboxChanged(_:))
 
+        // Backend segmented control
+        detailBackend.target = self
+        detailBackend.action = #selector(backendChanged)
+
+        // VLM-only fields
+        for (label, field) in [
+            (detailKvBitsLabel, detailKvBits),
+            (detailKvGroupSizeLabel, detailKvGroupSize),
+            (detailMaxKvSizeLabel, detailMaxKvSize),
+            (detailQuantizedKvStartLabel, detailQuantizedKvStart)
+        ] {
+            label.alignment = .right
+            field.isEditable = true
+            field.target = self
+            field.action = #selector(detailFieldChanged(_:))
+        }
+
         let grid = NSGridView()
         grid.rowSpacing = 6
         grid.columnSpacing = 8
-        for (label, field) in detailFields {
-            let lbl = NSTextField(labelWithString: label)
-            lbl.alignment = .right
-            if let textField = field as? NSTextField {
-                grid.addRow(with: [lbl, textField])
-            } else if let popup = field as? NSPopUpButton {
-                grid.addRow(with: [lbl, popup])
-            }
-        }
+
+        // Backend row (at the top)
+        let backendLabel = NSTextField(labelWithString: "Backend:")
+        backendLabel.alignment = .right
+        grid.addRow(with: [backendLabel, detailBackend])
+
+        // Name
+        let nameLbl = NSTextField(labelWithString: "Name:")
+        nameLbl.alignment = .right
+        grid.addRow(with: [nameLbl, detailName])
+
+        // Python Path
+        let pythonLbl = NSTextField(labelWithString: "Python Path:")
+        pythonLbl.alignment = .right
+        grid.addRow(with: [pythonLbl, detailPythonPath])
+
+        // Model
+        let modelLbl = NSTextField(labelWithString: "Model:")
+        modelLbl.alignment = .right
+        grid.addRow(with: [modelLbl, detailModel])
+
+        // Port
+        let portLbl = NSTextField(labelWithString: "Port:")
+        portLbl.alignment = .right
+        grid.addRow(with: [portLbl, detailPort])
+
+        // LM-only: Context
+        detailMaxTokensLabel.alignment = .right
+        grid.addRow(with: [detailMaxTokensLabel, detailMaxTokens])
+
+        // Prefill (shared)
+        let prefillLbl = NSTextField(labelWithString: "Prefill:")
+        prefillLbl.alignment = .right
+        grid.addRow(with: [prefillLbl, detailPrefill])
+
+        // LM-only: Cache Size
+        detailCacheSizeLabel.alignment = .right
+        grid.addRow(with: [detailCacheSizeLabel, detailCacheSize])
+
+        // LM-only: Cache Bytes
+        detailCacheBytesLabel.alignment = .right
+        grid.addRow(with: [detailCacheBytesLabel, detailCacheBytes])
+
+        // Extra Args (shared)
+        let extraArgsLbl = NSTextField(labelWithString: "Extra Args:")
+        extraArgsLbl.alignment = .right
+        grid.addRow(with: [extraArgsLbl, detailExtraArgs])
+
+        // Trust Remote (shared checkbox)
         grid.addRow(with: [NSView(), detailTrustRemote])
-        grid.addRow(with: [NSView(), detailEnableThinking])
+
+        // LM-only: Enable Thinking checkbox
+        grid.addRow(with: [detailEnableThinkingLabel, detailEnableThinking])
+
+        // VLM-only fields
+        grid.addRow(with: [detailKvBitsLabel, detailKvBits])
+        grid.addRow(with: [detailKvGroupSizeLabel, detailKvGroupSize])
+        grid.addRow(with: [detailMaxKvSizeLabel, detailMaxKvSize])
+        grid.addRow(with: [detailQuantizedKvStartLabel, detailQuantizedKvStart])
+
         grid.column(at: 0).xPlacement = .trailing
         grid.column(at: 0).width = 90
 
@@ -211,8 +307,8 @@ final class SettingsWindowController: NSWindowController {
         envLabel.font = NSFont.systemFont(ofSize: 11)
         envLabel.lineBreakMode = .byTruncatingMiddle
 
-        let installButton = NSButton(title: "Install / Reinstall mlx-lm",
-                                     target: self, action: #selector(installEnvironment))
+        installButton.target = self
+        installButton.action = #selector(installEnvironment)
         installButton.bezelStyle = .rounded
 
         let outputScrollView = NSScrollView()
@@ -280,18 +376,20 @@ final class SettingsWindowController: NSWindowController {
         let hasSelection = row >= 0 && row < draftPresets.count
         let textFields: [NSTextField] = [
             detailName, detailPythonPath, detailModel, detailPort,
-            detailMaxTokens, detailPrefill, detailCacheSize, detailCacheBytes, detailExtraArgs
+            detailMaxTokens, detailPrefill, detailCacheSize, detailCacheBytes, detailExtraArgs,
+            detailKvBits, detailKvGroupSize, detailMaxKvSize, detailQuantizedKvStart
         ]
         for f in textFields { f.isEnabled = hasSelection }
-        detailServerType.isEnabled = hasSelection
+        detailBackend.isEnabled = hasSelection
         detailTrustRemote.isEnabled = hasSelection
         detailEnableThinking.isEnabled = hasSelection
 
         guard hasSelection else {
             for f in textFields { f.stringValue = "" }
-            detailServerType.selectItem(at: 0)
+            detailBackend.selectedSegment = 0
             detailTrustRemote.state = .off
             detailEnableThinking.state = .off
+            updateFieldVisibility(for: .mlxLM)
             return
         }
 
@@ -299,7 +397,6 @@ final class SettingsWindowController: NSWindowController {
         detailName.stringValue         = p.name
         detailPythonPath.stringValue   = p.pythonPath
         detailModel.stringValue        = p.model
-        detailServerType.selectItem(withTag: p.serverType.rawValue.hash)
         detailPort.stringValue         = String(p.port)
         detailMaxTokens.stringValue    = String(p.maxTokens)
         detailPrefill.stringValue      = String(p.prefillStepSize)
@@ -308,6 +405,15 @@ final class SettingsWindowController: NSWindowController {
         detailExtraArgs.stringValue    = p.extraArgs.joined(separator: " ")
         detailTrustRemote.state        = p.trustRemoteCode ? .on : .off
         detailEnableThinking.state     = p.enableThinking ? .on : .off
+
+        detailBackend.selectedSegment  = p.serverType == .mlxLM ? 0 : 1
+        detailKvBits.stringValue           = String(p.kvBits)
+        detailKvGroupSize.stringValue      = String(p.kvGroupSize)
+        detailMaxKvSize.stringValue        = String(p.maxKvSize)
+        detailQuantizedKvStart.stringValue = String(p.quantizedKvStart)
+        updateFieldVisibility(for: p.serverType)
+
+        installButton.title = "Install / Reinstall \(p.serverType == .mlxLM ? "mlx-lm" : "mlx-vlm")"
     }
 
     private func applyDetail() {
@@ -315,14 +421,7 @@ final class SettingsWindowController: NSWindowController {
         guard row >= 0, row < draftPresets.count else { return }
         let p = draftPresets[row]
 
-        // Get server type from popup menu
-        let serverTypeIndex = detailServerType.indexOfSelectedItem
-        let serverType: ServerType
-        if serverTypeIndex >= 0 && serverTypeIndex < ServerType.allCases.count {
-            serverType = ServerType.allCases[serverTypeIndex]
-        } else {
-            serverType = p.serverType
-        }
+        let serverType: ServerType = detailBackend.selectedSegment == 0 ? .mlxLM : .mlxVLM
 
         draftPresets[row] = ServerConfig(
             name:             detailName.stringValue.isEmpty ? p.name : detailName.stringValue,
@@ -337,10 +436,65 @@ final class SettingsWindowController: NSWindowController {
             extraArgs:        detailExtraArgs.stringValue
                                 .split(separator: " ").map(String.init),
             serverType:       serverType,
+            kvBits:           Int(detailKvBits.stringValue) ?? p.kvBits,
+            kvGroupSize:      Int(detailKvGroupSize.stringValue) ?? p.kvGroupSize,
+            maxKvSize:        Int(detailMaxKvSize.stringValue) ?? p.maxKvSize,
+            quantizedKvStart: Int(detailQuantizedKvStart.stringValue) ?? p.quantizedKvStart,
             pythonPath:       detailPythonPath.stringValue
         )
         presetListTable.reloadData(forRowIndexes: IndexSet(integer: row),
                                    columnIndexes: IndexSet(integersIn: 0..<presetListTable.numberOfColumns))
+    }
+
+    // MARK: - Backend picker
+
+    @objc private func backendChanged() {
+        let row = presetListTable.selectedRow
+        guard row >= 0, row < draftPresets.count else { return }
+        let backend: ServerType = detailBackend.selectedSegment == 0 ? .mlxLM : .mlxVLM
+        let p = draftPresets[row]
+        draftPresets[row] = ServerConfig(
+            name: p.name, model: p.model, maxTokens: p.maxTokens,
+            port: p.port, prefillStepSize: p.prefillStepSize,
+            promptCacheSize: p.promptCacheSize, promptCacheBytes: p.promptCacheBytes,
+            trustRemoteCode: p.trustRemoteCode, enableThinking: p.enableThinking,
+            extraArgs: p.extraArgs, serverType: backend,
+            kvBits: p.kvBits, kvGroupSize: p.kvGroupSize,
+            maxKvSize: p.maxKvSize, quantizedKvStart: p.quantizedKvStart,
+            pythonPath: p.pythonPath
+        )
+        updateFieldVisibility(for: backend)
+        installButton.title = "Install / Reinstall \(backend == .mlxLM ? "mlx-lm" : "mlx-vlm")"
+        presetListTable.reloadData(
+            forRowIndexes: IndexSet(integer: row),
+            columnIndexes: IndexSet(integersIn: 0..<presetListTable.numberOfColumns)
+        )
+    }
+
+    private func updateFieldVisibility(for backend: ServerType) {
+        let isLM = backend == .mlxLM
+        // LM-only rows: hide both label and field when VLM
+        let lmPairs: [(NSView, NSView)] = [
+            (detailMaxTokensLabel, detailMaxTokens),
+            (detailCacheSizeLabel, detailCacheSize),
+            (detailCacheBytesLabel, detailCacheBytes),
+            (detailEnableThinkingLabel, detailEnableThinking),
+        ]
+        for (label, field) in lmPairs {
+            label.isHidden = !isLM
+            field.isHidden = !isLM
+        }
+        // VLM-only rows: hide both label and field when LM
+        let vlmPairs: [(NSView, NSView)] = [
+            (detailKvBitsLabel, detailKvBits),
+            (detailKvGroupSizeLabel, detailKvGroupSize),
+            (detailMaxKvSizeLabel, detailMaxKvSize),
+            (detailQuantizedKvStartLabel, detailQuantizedKvStart),
+        ]
+        for (label, field) in vlmPairs {
+            label.isHidden = isLM
+            field.isHidden = isLM
+        }
     }
 
     // MARK: - General tab
@@ -463,7 +617,8 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func installEnvironment() {
         installerOutput.string = ""
-        let inst = EnvironmentInstaller()
+        let backend = draftPresets[safe: presetListTable.selectedRow]?.serverType ?? .mlxLM
+        let inst = EnvironmentInstaller(backend: backend)
         self.installer = inst
         inst.onOutput = { [weak self] text in
             self?.installerOutput.textStorage?.append(
@@ -538,16 +693,37 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
         let preset = draftPresets[row]
         let id = tableColumn?.identifier.rawValue ?? ""
 
-        let field = NSTextField(labelWithString: {
-            switch id {
-            case "listName":  return preset.name
-            case "listModel": return preset.model
-            default:          return ""
+        switch id {
+        case "listBackend":
+            let cellView = tableView.makeView(
+                withIdentifier: NSUserInterfaceItemIdentifier("listBackend"), owner: self
+            ) as? NSTableCellView ?? NSTableCellView()
+            if cellView.textField == nil {
+                let tf = NSTextField(labelWithString: "")
+                tf.translatesAutoresizingMaskIntoConstraints = false
+                cellView.addSubview(tf)
+                NSLayoutConstraint.activate([
+                    tf.leadingAnchor.constraint(equalTo: cellView.leadingAnchor),
+                    tf.trailingAnchor.constraint(equalTo: cellView.trailingAnchor),
+                    tf.centerYAnchor.constraint(equalTo: cellView.centerYAnchor)
+                ])
+                cellView.textField = tf
             }
-        }())
-        field.font = NSFont.systemFont(ofSize: 12)
-        field.lineBreakMode = .byTruncatingTail
-        return field
+            cellView.textField?.stringValue = preset.serverType == .mlxLM ? "LM" : "VLM"
+            return cellView
+
+        default:
+            let field = NSTextField(labelWithString: {
+                switch id {
+                case "listName":  return preset.name
+                case "listModel": return preset.model
+                default:          return ""
+                }
+            }())
+            field.font = NSFont.systemFont(ofSize: 12)
+            field.lineBreakMode = .byTruncatingTail
+            return field
+        }
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
