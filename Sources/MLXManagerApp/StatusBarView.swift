@@ -128,11 +128,11 @@ final class StatusBarView: StatusBarViewProtocol {
         if let button = statusItem.button {
             button.title = ""
             button.image = nil
+            button.alignment = .left
             arcView.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(arcView)
             NSLayoutConstraint.activate([
                 arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-                arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
                 arcView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
             ])
         }
@@ -233,7 +233,13 @@ final class StatusBarView: StatusBarViewProtocol {
 
     func updateLogLine(_ line: String?) {
         DispatchQueue.main.async { [weak self] in
-            self?.statusItem.button?.title = line.map { " \($0)" } ?? ""
+            guard let button = self?.statusItem.button else { return }
+            if let line {
+                // Trailing spaces reserve room for the arc view on the right (≈21pt ≈ 4 spaces)
+                button.title = line + "    "
+            } else {
+                button.title = ""
+            }
         }
     }
 }
