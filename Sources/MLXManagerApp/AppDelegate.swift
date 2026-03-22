@@ -53,10 +53,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Environment bootstrap
 
     private func bootstrapEnvironmentIfNeeded() {
+        let presets = loadPresets()
+        let backend = presets.first?.serverType ?? .mlxLM
         let checker = EnvironmentChecker()
-        guard !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath) else { return }
+        guard !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath(for: backend)) else { return }
         statusBarController.environmentInstallStarted()
-        let inst = EnvironmentInstaller()
+        let inst = EnvironmentInstaller(backend: backend)
         inst.onComplete = { [weak self] _ in
             self?.statusBarController.environmentInstallFinished()
             self?.backgroundInstaller = nil
@@ -86,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Server lifecycle
 
     private func startServer(config: ServerConfig) {
-        let resolvedConfig = resolvedPythonPath(config)
+        let resolvedConfig = config.withResolvedPythonPath()
         do {
             try serverManager.start(config: resolvedConfig)
             serverState = ServerState()
@@ -256,14 +258,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func loadPresets() -> [ServerConfig] {
         // Try user file first, fall back to bundled
         if let presets = try? UserPresetStore.load(from: UserPresetStore.defaultURL) {
-            return presets.map { resolvedPythonPath($0) }
+            return presets.map { $0.withResolvedPythonPath() }
         }
         guard let url = bundledPresetsURL(),
               let yaml = try? String(contentsOf: url, encoding: .utf8),
               let presets = try? ConfigLoader.load(yaml: yaml) else {
             return []
         }
-        return presets.map { resolvedPythonPath($0) }
+        return presets.map { $0.withResolvedPythonPath() }
     }
 
     /// Returns the URL for the bundled presets.yaml.
@@ -290,11 +292,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? data.write(to: settingsURL)
     }
 
-    /// Expand tilde in pythonPath at runtime.
-    private func resolvedPythonPath(_ config: ServerConfig) -> ServerConfig {
-        let resolved = NSString(string: config.pythonPath).expandingTildeInPath
-        guard resolved != config.pythonPath else { return config }
-        return ServerConfig(name: config.name, model: config.model, maxTokens: config.maxTokens,
-                            extraArgs: config.extraArgs, pythonPath: resolved)
-    }
 }
