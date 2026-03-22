@@ -87,10 +87,12 @@ struct StatusBarControllerTests {
         }
     }
 
-    @Test("Near-complete progress emits fraction near 1")
-    func nearCompleteEmitsHighFraction() {
+    @Test("Near-complete progress emits fraction near 1 when threshold disabled")
+    func nearCompleteEmitsHighFractionWhenThresholdDisabled() {
         let view = MockStatusBarView()
-        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        var settings = AppSettings()
+        settings.progressCompletionThreshold = 0  // disabled
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings)
         controller.serverDidStart()
         controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
         if case let .processing(fraction) = view.lastState {
@@ -110,15 +112,44 @@ struct StatusBarControllerTests {
         #expect(view.lastState == .idle)
     }
 
-    @Test("Completion after processing shows full arc before idle")
-    func completionShowsFullArc() {
+    @Test("Progress at threshold snaps to idle when threshold enabled")
+    func progressAtThresholdSnapsToIdle() {
         let view = MockStatusBarView()
-        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        var settings = AppSettings()
+        settings.progressCompletionThreshold = 99
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings)
         controller.serverDidStart()
-        // Simulate a real completion: processing → KV Caches triggers idle with completedRequest
-        controller.update(state: makeCompletedState(current: 41056, total: 41061))
-        // Immediately after, the view should show full arc (fraction 1.0), not idle
-        #expect(view.lastState == .processing(fraction: 1.0))
+        // 41056/41061 ≈ 99.99% — above threshold of 99%
+        controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
+        #expect(view.lastState == .idle)
+    }
+
+    @Test("Progress below threshold stays processing")
+    func progressBelowThresholdStaysProcessing() {
+        let view = MockStatusBarView()
+        var settings = AppSettings()
+        settings.progressCompletionThreshold = 99
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings)
+        controller.serverDidStart()
+        // 4096/41061 ≈ 10% — well below threshold
+        controller.update(state: makeState(status: .processing, current: 4096, total: 41061))
+        if case .processing = view.lastState { } else {
+            Issue.record("Expected .processing, got \(String(describing: view.lastState))")
+        }
+    }
+
+    @Test("Threshold of 0 disables snap behaviour")
+    func thresholdZeroDisablesSnap() {
+        let view = MockStatusBarView()
+        var settings = AppSettings()
+        settings.progressCompletionThreshold = 0
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings)
+        controller.serverDidStart()
+        // 41056/41061 ≈ 99.99% — would snap if threshold were active
+        controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
+        if case .processing = view.lastState { } else {
+            Issue.record("Expected .processing, got \(String(describing: view.lastState))")
+        }
     }
 
     // MARK: - Menu building
@@ -318,14 +349,4 @@ struct StatusBarControllerTests {
         return state
     }
 
-    /// Creates a state that went processing → idle via a completion signal (completedRequest is set).
-    private func makeCompletedState(current: Int, total: Int) -> ServerState {
-        var state = ServerState()
-        state.serverStarted()
-        state.handle(.progress(current: current, total: total,
-                               percentage: (Double(current) / Double(total)) * 100))
-        // KV Caches triggers completion → idle
-        state.handle(.kvCaches(gpuGB: 1.0, tokens: total))
-        return state
-    }
 }

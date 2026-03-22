@@ -30,6 +30,7 @@ final class SettingsWindowController: NSWindowController {
     private let ramGraphCheckbox = NSButton(checkboxWithTitle: "Enable RAM graph", target: nil, action: nil)
     private let ramPollPopup = NSPopUpButton()
     private let startAtLoginCheckbox = NSButton(checkboxWithTitle: "Start at login", target: nil, action: nil)
+    private let completionThresholdField = NSTextField()
 
     // MARK: - Environment installer
     private let installerOutput = NSTextView()
@@ -356,7 +357,24 @@ final class SettingsWindowController: NSWindowController {
 
         startAtLoginCheckbox.state = draftSettings.startAtLogin ? .on : .off
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 3)
+        completionThresholdField.stringValue = String(draftSettings.progressCompletionThreshold)
+        completionThresholdField.placeholderString = "99"
+        completionThresholdField.formatter = {
+            let f = NumberFormatter()
+            f.minimum = 0
+            f.maximum = 100
+            f.allowsFloats = false
+            return f
+        }()
+
+        let thresholdNote = NSTextField(wrappingLabelWithString:
+            "Prompt processing logs never reach 100% — the server logs token counts, not generation. " +
+            "Set a percentage to treat as done. 0 disables this and the icon stays at the last logged value."
+        )
+        thresholdNote.font = NSFont.systemFont(ofSize: 11)
+        thresholdNote.textColor = .secondaryLabelColor
+
+        let grid = NSGridView(numberOfColumns: 2, rows: 4)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = NSTextField(labelWithString: "")
@@ -369,15 +387,28 @@ final class SettingsWindowController: NSWindowController {
         grid.cell(atColumnIndex: 0, rowIndex: 2).contentView = NSTextField(labelWithString: "")
         grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = startAtLoginCheckbox
 
+        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView =
+            NSTextField(labelWithString: "Complete at %:")
+        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = completionThresholdField
+
         grid.column(at: 0).xPlacement = .trailing
         grid.rowSpacing = 8
 
+        completionThresholdField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+
         let container = NSView()
         container.addSubview(grid)
+        container.addSubview(thresholdNote)
         grid.translatesAutoresizingMaskIntoConstraints = false
+        thresholdNote.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             grid.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
             grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            grid.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -16),
+
+            thresholdNote.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            thresholdNote.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            thresholdNote.topAnchor.constraint(equalTo: grid.bottomAnchor, constant: 12),
         ])
         return container
     }
@@ -473,6 +504,7 @@ final class SettingsWindowController: NSWindowController {
         draftSettings.ramGraphEnabled = ramGraphCheckbox.state == .on
         let intervals = [2, 5, 10]
         draftSettings.ramPollInterval = intervals[safe: ramPollPopup.indexOfSelectedItem] ?? 5
+        draftSettings.progressCompletionThreshold = Int(completionThresholdField.stringValue) ?? 99
 
         let newStartAtLogin = startAtLoginCheckbox.state == .on
         if newStartAtLogin != draftSettings.startAtLogin {
