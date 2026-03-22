@@ -1,7 +1,7 @@
 import AppKit
 import MLXManager
 
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     var onSave: (([ServerConfig], AppSettings) -> Void)?
 
@@ -53,6 +53,7 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
 
+        window.delegate = self
         buildUI(in: window)
         presetListTable.reloadData()
         populateDetail(row: presetListTable.selectedRow)
@@ -566,6 +567,10 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard let tv = notification.object as? NSTableView, tv === presetListTable else { return }
         populateDetail(row: tv.selectedRow)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
     }
 }
 
