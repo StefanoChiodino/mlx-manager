@@ -30,6 +30,7 @@ final class SettingsWindowController: NSWindowController {
     private let ramGraphCheckbox = NSButton(checkboxWithTitle: "Enable RAM graph", target: nil, action: nil)
     private let ramPollPopup = NSPopUpButton()
     private let startAtLoginCheckbox = NSButton(checkboxWithTitle: "Start at login", target: nil, action: nil)
+    private let showLastLogLineCheckbox = NSButton(checkboxWithTitle: "Show last log line in menu bar", target: nil, action: nil)
     private let completionThresholdField = NSTextField()
 
     // MARK: - Environment installer
@@ -357,6 +358,10 @@ final class SettingsWindowController: NSWindowController {
 
         startAtLoginCheckbox.state = draftSettings.startAtLogin ? .on : .off
 
+        showLastLogLineCheckbox.state = draftSettings.showLastLogLine ? .on : .off
+        showLastLogLineCheckbox.target = self
+        showLastLogLineCheckbox.action = #selector(showLastLogLineToggled)
+
         completionThresholdField.stringValue = String(draftSettings.progressCompletionThreshold)
         completionThresholdField.placeholderString = "99"
         completionThresholdField.formatter = {
@@ -374,7 +379,7 @@ final class SettingsWindowController: NSWindowController {
         thresholdNote.font = NSFont.systemFont(ofSize: 11)
         thresholdNote.textColor = .secondaryLabelColor
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 4)
+        let grid = NSGridView(numberOfColumns: 2, rows: 5)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = NSTextField(labelWithString: "")
@@ -387,9 +392,12 @@ final class SettingsWindowController: NSWindowController {
         grid.cell(atColumnIndex: 0, rowIndex: 2).contentView = NSTextField(labelWithString: "")
         grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = startAtLoginCheckbox
 
-        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView =
+        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView = NSTextField(labelWithString: "")
+        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = showLastLogLineCheckbox
+
+        grid.cell(atColumnIndex: 0, rowIndex: 4).contentView =
             NSTextField(labelWithString: "Complete at %:")
-        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = completionThresholdField
+        grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = completionThresholdField
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowSpacing = 8
@@ -461,6 +469,10 @@ final class SettingsWindowController: NSWindowController {
         ramPollPopup.isEnabled = ramGraphCheckbox.state == .on
     }
 
+    @objc private func showLastLogLineToggled() {
+        draftSettings.showLastLogLine = showLastLogLineCheckbox.state == .on
+    }
+
     @objc private func installEnvironment() {
         installerOutput.string = ""
         let inst = EnvironmentInstaller()
@@ -511,6 +523,7 @@ final class SettingsWindowController: NSWindowController {
             if newStartAtLogin { LoginItemManager.enable() } else { LoginItemManager.disable() }
         }
         draftSettings.startAtLogin = newStartAtLogin
+        draftSettings.showLastLogLine = showLastLogLineCheckbox.state == .on
 
         try? UserPresetStore.save(draftPresets, to: UserPresetStore.defaultURL)
 
