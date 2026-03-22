@@ -6,4 +6,4 @@ DerivedData/
 *.xcworkspace/
 .DS_Store
 .superpowers/
-build/
+build/.worktrees/
