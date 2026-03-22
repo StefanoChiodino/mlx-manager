@@ -128,11 +128,11 @@ final class StatusBarView: StatusBarViewProtocol {
         if let button = statusItem.button {
             button.title = ""
             button.image = nil
-            button.alignment = .left
             arcView.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(arcView)
             NSLayoutConstraint.activate([
                 arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+                arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
                 arcView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
             ])
         }
@@ -233,12 +233,20 @@ final class StatusBarView: StatusBarViewProtocol {
 
     func updateLogLine(_ line: String?) {
         DispatchQueue.main.async { [weak self] in
-            guard let button = self?.statusItem.button else { return }
+            guard let self, let button = self.statusItem.button else { return }
             if let line {
-                // Trailing spaces reserve room for the arc view on the right (≈21pt ≈ 4 spaces)
-                button.title = line + "    "
+                // Pad with leading spaces to clear the arc icon on the left
+                let arcWidth = self.arcView.intrinsicContentSize.width
+                let font = button.font ?? NSFont.menuBarFont(ofSize: 0)
+                let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
+                let spacesNeeded = Int(ceil((arcWidth + 6) / spaceWidth))
+                let padding = String(repeating: " ", count: spacesNeeded)
+                button.title = padding + line
+                let textWidth = (button.title as NSString).size(withAttributes: [.font: font]).width
+                self.statusItem.length = textWidth + 8 // 4pt padding each side
             } else {
                 button.title = ""
+                self.statusItem.length = NSStatusItem.variableLength
             }
         }
     }
