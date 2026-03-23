@@ -45,17 +45,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let detailMaxKvSize        = NSTextField()
     private let detailQuantizedKvStart = NSTextField()
 
-    // Labels for show/hide (LM-only rows)
-    private let detailMaxTokensLabel      = NSTextField(labelWithString: "Context:")
-    private let detailCacheSizeLabel      = NSTextField(labelWithString: "Cache Size:")
-    private let detailCacheBytesLabel     = NSTextField(labelWithString: "Cache Bytes:")
-    private let detailEnableThinkingLabel = NSTextField(labelWithString: "")  // checkbox row uses NSView()
-
-    // Labels for show/hide (VLM-only rows)
-    private let detailKvBitsLabel            = NSTextField(labelWithString: "KV Bits:")
-    private let detailKvGroupSizeLabel       = NSTextField(labelWithString: "KV Group Size:")
-    private let detailMaxKvSizeLabel         = NSTextField(labelWithString: "Max KV Size:")
-    private let detailQuantizedKvStartLabel  = NSTextField(labelWithString: "KV Start:")
+    // Swappable backend-specific stack (replaced wholesale on backend change)
+    private var backendSpecificStack = NSStackView()
 
     // Install button (needs to be a property so we can update its title)
     private let installButton = NSButton(title: "Install / Reinstall mlx-lm",
@@ -116,9 +107,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancelTapped))
         cancelButton.bezelStyle = .rounded
-        cancelButton.keyEquivalent = "\u{1b}"
 
-        let buttonStack = NSStackView(views: [cancelButton])
+        let closeButton = NSButton(title: "Close", target: self, action: #selector(closeTapped))
+        closeButton.bezelStyle = .rounded
+        closeButton.keyEquivalent = "\r"
+
+        let buttonStack = NSStackView(views: [cancelButton, closeButton])
         buttonStack.orientation = .horizontal
         buttonStack.spacing = 8
 
@@ -191,114 +185,64 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         rowButtons.spacing = 4
 
         // — Detail form —
-        let textDetailFields: [(NSTextField, NSTextField)] = [
-            (detailMaxTokensLabel, detailMaxTokens),
-            (detailCacheSizeLabel, detailCacheSize),
-            (detailCacheBytesLabel, detailCacheBytes),
-        ]
-        for (_, field) in textDetailFields {
-            field.isEditable = true
-            field.target = self
-            field.action = #selector(detailFieldChanged(_:))
-        }
-
-        let allTextFields: [NSTextField] = [
-            detailName, detailPythonPath, detailModel,
-            detailPort, detailPrefill, detailExtraArgs
-        ]
-        for f in allTextFields {
+        // Wire up all editable text fields
+        for f in [detailName, detailPythonPath, detailModel, detailPort, detailPrefill, detailExtraArgs,
+                  detailMaxTokens, detailCacheSize, detailCacheBytes,
+                  detailKvBits, detailKvGroupSize, detailMaxKvSize, detailQuantizedKvStart] {
             f.isEditable = true
             f.target = self
             f.action = #selector(detailFieldChanged(_:))
         }
-
         detailTrustRemote.target = self
         detailTrustRemote.action = #selector(detailCheckboxChanged(_:))
         detailEnableThinking.target = self
         detailEnableThinking.action = #selector(detailCheckboxChanged(_:))
-
-        // Backend segmented control
         detailBackend.target = self
         detailBackend.action = #selector(backendChanged)
 
-        // VLM-only fields
-        for (label, field) in [
-            (detailKvBitsLabel, detailKvBits),
-            (detailKvGroupSizeLabel, detailKvGroupSize),
-            (detailMaxKvSizeLabel, detailMaxKvSize),
-            (detailQuantizedKvStartLabel, detailQuantizedKvStart)
-        ] {
-            label.alignment = .right
-            field.isEditable = true
-            field.target = self
-            field.action = #selector(detailFieldChanged(_:))
+        // Helper: build a label+field row for use in a vertical NSStackView.
+        // Both views are placed in a horizontal NSStackView with a fixed-width right-aligned label.
+        func formRow(_ labelText: String, _ field: NSView) -> NSStackView {
+            let lbl = NSTextField(labelWithString: labelText)
+            lbl.alignment = .right
+            lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            let row = NSStackView(views: [lbl, field])
+            row.orientation = .horizontal
+            row.spacing = 8
+            row.alignment = .centerY
+            return row
         }
 
-        let grid = NSGridView()
-        grid.rowSpacing = 6
-        grid.columnSpacing = 8
+        // — Shared-top rows (always visible) —
+        let sharedTopStack = NSStackView(views: [
+            formRow("Backend:", detailBackend),
+            formRow("Name:", detailName),
+            formRow("Python Path:", detailPythonPath),
+            formRow("Model:", detailModel),
+            formRow("Port:", detailPort),
+            formRow("Prefill:", detailPrefill),
+        ])
+        sharedTopStack.orientation = .vertical
+        sharedTopStack.alignment = .leading
+        sharedTopStack.spacing = 6
 
-        // Backend row (at the top)
-        let backendLabel = NSTextField(labelWithString: "Backend:")
-        backendLabel.alignment = .right
-        grid.addRow(with: [backendLabel, detailBackend])
+        // — Shared-bottom rows (always visible) —
+        let sharedBottomStack = NSStackView(views: [
+            formRow("Extra Args:", detailExtraArgs),
+            formRow("", detailTrustRemote),
+        ])
+        sharedBottomStack.orientation = .vertical
+        sharedBottomStack.alignment = .leading
+        sharedBottomStack.spacing = 6
 
-        // Name
-        let nameLbl = NSTextField(labelWithString: "Name:")
-        nameLbl.alignment = .right
-        grid.addRow(with: [nameLbl, detailName])
+        // — Backend-specific block (swapped on backend change) —
+        backendSpecificStack = makeLMStack()
 
-        // Python Path
-        let pythonLbl = NSTextField(labelWithString: "Python Path:")
-        pythonLbl.alignment = .right
-        grid.addRow(with: [pythonLbl, detailPythonPath])
-
-        // Model
-        let modelLbl = NSTextField(labelWithString: "Model:")
-        modelLbl.alignment = .right
-        grid.addRow(with: [modelLbl, detailModel])
-
-        // Port
-        let portLbl = NSTextField(labelWithString: "Port:")
-        portLbl.alignment = .right
-        grid.addRow(with: [portLbl, detailPort])
-
-        // LM-only: Context
-        detailMaxTokensLabel.alignment = .right
-        grid.addRow(with: [detailMaxTokensLabel, detailMaxTokens])
-
-        // Prefill (shared)
-        let prefillLbl = NSTextField(labelWithString: "Prefill:")
-        prefillLbl.alignment = .right
-        grid.addRow(with: [prefillLbl, detailPrefill])
-
-        // LM-only: Cache Size
-        detailCacheSizeLabel.alignment = .right
-        grid.addRow(with: [detailCacheSizeLabel, detailCacheSize])
-
-        // LM-only: Cache Bytes
-        detailCacheBytesLabel.alignment = .right
-        grid.addRow(with: [detailCacheBytesLabel, detailCacheBytes])
-
-        // Extra Args (shared)
-        let extraArgsLbl = NSTextField(labelWithString: "Extra Args:")
-        extraArgsLbl.alignment = .right
-        grid.addRow(with: [extraArgsLbl, detailExtraArgs])
-
-        // Trust Remote (shared checkbox)
-        grid.addRow(with: [NSView(), detailTrustRemote])
-
-        // LM-only: Enable Thinking checkbox
-        grid.addRow(with: [detailEnableThinkingLabel, detailEnableThinking])
-
-        // VLM-only fields
-        grid.addRow(with: [detailKvBitsLabel, detailKvBits])
-        grid.addRow(with: [detailKvGroupSizeLabel, detailKvGroupSize])
-        grid.addRow(with: [detailMaxKvSizeLabel, detailMaxKvSize])
-        grid.addRow(with: [detailQuantizedKvStartLabel, detailQuantizedKvStart])
-
-        grid.column(at: 0).xPlacement = .trailing
-        grid.column(at: 0).width = 90
+        // — Outer detail stack —
+        let detailStack = NSStackView(views: [sharedTopStack, backendSpecificStack, sharedBottomStack])
+        detailStack.orientation = .vertical
+        detailStack.alignment = .leading
+        detailStack.spacing = 6
 
         // — Environment box —
         let envBox = NSBox()
@@ -340,15 +284,26 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         envBox.contentView = envStack
 
+        // Wrap detail stack in a scroll view so it never overflows into the env box
+        let detailScrollView = NSScrollView()
+        detailScrollView.documentView = detailStack
+        detailScrollView.hasVerticalScroller = true
+        detailScrollView.autohidesScrollers = true
+        detailScrollView.drawsBackground = false
+
+        // The stack must be at least as wide as the scroll view's content area
+        detailStack.translatesAutoresizingMaskIntoConstraints = false
+        detailStack.widthAnchor.constraint(equalTo: detailScrollView.contentView.widthAnchor).isActive = true
+
         // — Layout —
         container.addSubview(listScrollView)
         container.addSubview(rowButtons)
-        container.addSubview(grid)
+        container.addSubview(detailScrollView)
         container.addSubview(envBox)
 
         listScrollView.translatesAutoresizingMaskIntoConstraints = false
         rowButtons.translatesAutoresizingMaskIntoConstraints = false
-        grid.translatesAutoresizingMaskIntoConstraints = false
+        detailScrollView.translatesAutoresizingMaskIntoConstraints = false
         envBox.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
@@ -361,10 +316,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             rowButtons.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             rowButtons.bottomAnchor.constraint(equalTo: envBox.topAnchor, constant: -8),
 
-            // detail form on the right
-            grid.leadingAnchor.constraint(equalTo: listScrollView.trailingAnchor, constant: 12),
-            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4),
-            grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            // detail form on the right — constrained top and bottom so it never overlaps env box
+            detailScrollView.leadingAnchor.constraint(equalTo: listScrollView.trailingAnchor, constant: 12),
+            detailScrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4),
+            detailScrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            detailScrollView.bottomAnchor.constraint(equalTo: envBox.topAnchor, constant: -8),
 
             // env box full width at the bottom
             envBox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -396,7 +352,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             detailBackend.selectedSegment = 0
             detailTrustRemote.state = .off
             detailEnableThinking.state = .off
-            updateFieldVisibility(for: .mlxLM)
+            swapBackendSpecificStack(for: .mlxLM)
             return
         }
 
@@ -418,7 +374,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         detailKvGroupSize.stringValue      = String(p.kvGroupSize)
         detailMaxKvSize.stringValue        = String(p.maxKvSize)
         detailQuantizedKvStart.stringValue = String(p.quantizedKvStart)
-        updateFieldVisibility(for: p.serverType)
+        swapBackendSpecificStack(for: p.serverType)
 
         installButton.title = "Install / Reinstall \(p.serverType == .mlxLM ? "mlx-lm" : "mlx-vlm")"
     }
@@ -470,7 +426,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             maxKvSize: p.maxKvSize, quantizedKvStart: p.quantizedKvStart,
             pythonPath: p.pythonPath
         )
-        updateFieldVisibility(for: backend)
+        swapBackendSpecificStack(for: backend)
         installButton.title = "Install / Reinstall \(backend == .mlxLM ? "mlx-lm" : "mlx-vlm")"
         presetListTable.reloadData(
             forRowIndexes: IndexSet(integer: row),
@@ -479,30 +435,59 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         persistChanges()
     }
 
-    private func updateFieldVisibility(for backend: ServerType) {
-        let isLM = backend == .mlxLM
-        // LM-only rows: hide both label and field when VLM
-        let lmPairs: [(NSView, NSView)] = [
-            (detailMaxTokensLabel, detailMaxTokens),
-            (detailCacheSizeLabel, detailCacheSize),
-            (detailCacheBytesLabel, detailCacheBytes),
-            (detailEnableThinkingLabel, detailEnableThinking),
-        ]
-        for (label, field) in lmPairs {
-            label.isHidden = !isLM
-            field.isHidden = !isLM
+    private func makeLMStack() -> NSStackView {
+        func row(_ labelText: String, _ field: NSView) -> NSStackView {
+            let lbl = NSTextField(labelWithString: labelText)
+            lbl.alignment = .right
+            lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            let r = NSStackView(views: [lbl, field])
+            r.orientation = .horizontal
+            r.spacing = 8
+            r.alignment = .centerY
+            return r
         }
-        // VLM-only rows: hide both label and field when LM
-        let vlmPairs: [(NSView, NSView)] = [
-            (detailKvBitsLabel, detailKvBits),
-            (detailKvGroupSizeLabel, detailKvGroupSize),
-            (detailMaxKvSizeLabel, detailMaxKvSize),
-            (detailQuantizedKvStartLabel, detailQuantizedKvStart),
-        ]
-        for (label, field) in vlmPairs {
-            label.isHidden = isLM
-            field.isHidden = isLM
+        let stack = NSStackView(views: [
+            row("Context:", detailMaxTokens),
+            row("Cache Size:", detailCacheSize),
+            row("Cache Bytes:", detailCacheBytes),
+            row("", detailEnableThinking),
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        return stack
+    }
+
+    private func makeVLMStack() -> NSStackView {
+        func row(_ labelText: String, _ field: NSView) -> NSStackView {
+            let lbl = NSTextField(labelWithString: labelText)
+            lbl.alignment = .right
+            lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            let r = NSStackView(views: [lbl, field])
+            r.orientation = .horizontal
+            r.spacing = 8
+            r.alignment = .centerY
+            return r
         }
+        let stack = NSStackView(views: [
+            row("KV Bits:", detailKvBits),
+            row("KV Group Size:", detailKvGroupSize),
+            row("Max KV Size:", detailMaxKvSize),
+            row("KV Start:", detailQuantizedKvStart),
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        return stack
+    }
+
+    private func swapBackendSpecificStack(for backend: ServerType) {
+        guard let parent = backendSpecificStack.superview as? NSStackView else { return }
+        let insertIndex = parent.arrangedSubviews.firstIndex(of: backendSpecificStack) ?? 1
+        parent.removeArrangedSubview(backendSpecificStack)
+        backendSpecificStack.removeFromSuperview()
+        backendSpecificStack = backend == .mlxLM ? makeLMStack() : makeVLMStack()
+        parent.insertArrangedSubview(backendSpecificStack, at: insertIndex)
     }
 
     // MARK: - General tab
@@ -712,6 +697,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             }
         }
         inst.install()
+    }
+
+    @objc private func closeTapped() {
+        window?.makeFirstResponder(nil)  // commit any active field editor
+        applyDetail()
+        window?.close()
     }
 
     @objc private func cancelTapped() {
