@@ -231,12 +231,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showSettings(presets: [ServerConfig]) {
         if settingsWindowController == nil {
-            settingsWindowController = SettingsWindowController(presets: presets, settings: settings)
-            settingsWindowController?.onSave = { [weak self] newPresets, newSettings in
+            let swc = SettingsWindowController(presets: presets, settings: settings)
+            settingsWindowController = swc
+
+            let rebuild = { [weak self] (newPresets: [ServerConfig], newSettings: AppSettings) in
                 guard let self else { return }
                 self.settings = newSettings
                 self.saveSettings(newSettings)
-                // Rebuild menu with new presets + settings
                 let view = StatusBarView()
                 self.statusBarController = StatusBarController(
                     view: view,
@@ -253,6 +254,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self.settingsWindowController = nil
             }
+
+            swc.onChange = rebuild
+            swc.onCancel = rebuild
         }
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)

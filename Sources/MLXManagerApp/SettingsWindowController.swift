@@ -3,10 +3,16 @@ import MLXManager
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
-    var onSave: (([ServerConfig], AppSettings) -> Void)?
+    var onChange: (([ServerConfig], AppSettings) -> Void)?
+    var onCancel: (([ServerConfig], AppSettings) -> Void)?
 
     private var draftPresets: [ServerConfig] = []
     private var draftSettings: AppSettings = AppSettings()
+    private var currentDetailRow: Int = -1
+
+    // Snapshot taken at open — restored on Cancel
+    private var snapshotPresets: [ServerConfig] = []
+    private var snapshotSettings: AppSettings = AppSettings()
 
     // MARK: - List (master)
     private let presetListTable = NSTableView()
@@ -69,6 +75,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(presets: [ServerConfig], settings: AppSettings) {
         self.draftPresets = presets
         self.draftSettings = settings
+        self.snapshotPresets = presets
+        self.snapshotSettings = settings
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
@@ -106,15 +114,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         tabView.addTabViewItem(presetsTab)
         tabView.addTabViewItem(generalTab)
 
-        let saveButton = NSButton(title: "Save", target: self, action: #selector(saveTapped))
-        saveButton.bezelStyle = .rounded
-        saveButton.keyEquivalent = "\r"
-
         let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancelTapped))
         cancelButton.bezelStyle = .rounded
         cancelButton.keyEquivalent = "\u{1b}"
 
-        let buttonStack = NSStackView(views: [cancelButton, saveButton])
+        let buttonStack = NSStackView(views: [cancelButton])
         buttonStack.orientation = .horizontal
         buttonStack.spacing = 8
 
@@ -375,6 +379,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     // MARK: - Detail form population
 
     private func populateDetail(row: Int) {
+        currentDetailRow = row
         let hasSelection = row >= 0 && row < draftPresets.count
         let textFields: [NSTextField] = [
             detailName, detailPythonPath, detailModel, detailPort,
@@ -419,7 +424,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func applyDetail() {
-        let row = presetListTable.selectedRow
+        let row = currentDetailRow
         guard row >= 0, row < draftPresets.count else { return }
         let p = draftPresets[row]
 
@@ -471,6 +476,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             forRowIndexes: IndexSet(integer: row),
             columnIndexes: IndexSet(integersIn: 0..<presetListTable.numberOfColumns)
         )
+        persistChanges()
     }
 
     private func updateFieldVisibility(for backend: ServerType) {
@@ -510,8 +516,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let pollIndex = [2, 5, 10].firstIndex(of: draftSettings.ramPollInterval) ?? 1
         ramPollPopup.selectItem(at: pollIndex)
         ramPollPopup.isEnabled = draftSettings.ramGraphEnabled
+        ramPollPopup.target = self
+        ramPollPopup.action = #selector(ramPollChanged)
 
         startAtLoginCheckbox.state = draftSettings.startAtLogin ? .on : .off
+        startAtLoginCheckbox.target = self
+        startAtLoginCheckbox.action = #selector(startAtLoginToggled)
 
         showLastLogLineCheckbox.state = draftSettings.showLastLogLine ? .on : .off
         showLastLogLineCheckbox.target = self
@@ -519,6 +529,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         completionThresholdField.stringValue = String(draftSettings.progressCompletionThreshold)
         completionThresholdField.placeholderString = "99"
+        completionThresholdField.target = self
+        completionThresholdField.action = #selector(completionThresholdChanged(_:))
         completionThresholdField.formatter = {
             let f = NumberFormatter()
             f.minimum = 0
@@ -576,14 +588,23 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         return container
     }
 
+    // MARK: - Persistence
+
+    private func persistChanges() {
+        try? UserPresetStore.save(draftPresets, to: UserPresetStore.defaultURL)
+        onChange?(draftPresets, draftSettings)
+    }
+
     // MARK: - Actions
 
     @objc private func detailFieldChanged(_ sender: NSTextField) {
         applyDetail()
+        persistChanges()
     }
 
     @objc private func detailCheckboxChanged(_ sender: NSButton) {
         applyDetail()
+        persistChanges()
     }
 
     @objc private func addPreset() {
@@ -606,6 +627,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         presetListTable.selectRowIndexes(IndexSet(integer: newRow), byExtendingSelection: false)
         populateDetail(row: newRow)
         detailName.window?.makeFirstResponder(detailName)
+        persistChanges()
     }
 
     @objc private func removePreset() {
@@ -618,14 +640,38 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             presetListTable.selectRowIndexes(IndexSet(integer: nextRow), byExtendingSelection: false)
         }
         populateDetail(row: presetListTable.selectedRow)
+        persistChanges()
     }
 
     @objc private func ramGraphToggled() {
-        ramPollPopup.isEnabled = ramGraphCheckbox.state == .on
+        draftSettings.ramGraphEnabled = ramGraphCheckbox.state == .on
+        ramPollPopup.isEnabled = draftSettings.ramGraphEnabled
+        persistChanges()
+    }
+
+    @objc private func ramPollChanged() {
+        let intervals = [2, 5, 10]
+        draftSettings.ramPollInterval = intervals[safe: ramPollPopup.indexOfSelectedItem] ?? 5
+        persistChanges()
+    }
+
+    @objc private func startAtLoginToggled() {
+        let newValue = startAtLoginCheckbox.state == .on
+        if newValue != draftSettings.startAtLogin {
+            if newValue { LoginItemManager.enable() } else { LoginItemManager.disable() }
+        }
+        draftSettings.startAtLogin = newValue
+        persistChanges()
     }
 
     @objc private func showLastLogLineToggled() {
         draftSettings.showLastLogLine = showLastLogLineCheckbox.state == .on
+        persistChanges()
+    }
+
+    @objc private func completionThresholdChanged(_ sender: NSTextField) {
+        draftSettings.progressCompletionThreshold = Int(sender.stringValue) ?? 99
+        persistChanges()
     }
 
     @objc private func installEnvironment() {
@@ -668,26 +714,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         inst.install()
     }
 
-    @objc private func saveTapped() {
-        draftSettings.ramGraphEnabled = ramGraphCheckbox.state == .on
-        let intervals = [2, 5, 10]
-        draftSettings.ramPollInterval = intervals[safe: ramPollPopup.indexOfSelectedItem] ?? 5
-        draftSettings.progressCompletionThreshold = Int(completionThresholdField.stringValue) ?? 99
-
-        let newStartAtLogin = startAtLoginCheckbox.state == .on
-        if newStartAtLogin != draftSettings.startAtLogin {
-            if newStartAtLogin { LoginItemManager.enable() } else { LoginItemManager.disable() }
-        }
-        draftSettings.startAtLogin = newStartAtLogin
-        draftSettings.showLastLogLine = showLastLogLineCheckbox.state == .on
-
-        try? UserPresetStore.save(draftPresets, to: UserPresetStore.defaultURL)
-
-        onSave?(draftPresets, draftSettings)
-        window?.close()
-    }
-
     @objc private func cancelTapped() {
+        draftPresets = snapshotPresets
+        draftSettings = snapshotSettings
+        // Revert login item state
+        if snapshotSettings.startAtLogin != (startAtLoginCheckbox.state == .on) {
+            if snapshotSettings.startAtLogin { LoginItemManager.enable() } else { LoginItemManager.disable() }
+        }
+        try? UserPresetStore.save(snapshotPresets, to: UserPresetStore.defaultURL)
+        onCancel?(snapshotPresets, snapshotSettings)
         window?.close()
     }
 }
@@ -742,6 +777,8 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard let tv = notification.object as? NSTableView, tv === presetListTable else { return }
+        window?.makeFirstResponder(nil)  // commit any active field editor before switching
+        applyDetail()
         populateDetail(row: tv.selectedRow)
     }
 
