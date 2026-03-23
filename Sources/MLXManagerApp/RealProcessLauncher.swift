@@ -23,6 +23,10 @@ final class RealProcessLauncher: ProcessLauncher {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [command] + arguments
+        if let logPath {
+            process.standardOutput = FileHandle(forWritingAtPath: logPath)
+            process.standardError = FileHandle(forWritingAtPath: logPath)
+        }
         process.terminationHandler = { _ in
             DispatchQueue.main.async { onExit() }
         }

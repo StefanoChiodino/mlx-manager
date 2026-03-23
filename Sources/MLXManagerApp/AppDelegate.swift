@@ -127,6 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         requestHistory = []
         ramSamples = []
         logLines = []
+        statusBarController.updateLogLine(nil)
     }
 
     // MARK: - Log tailing
@@ -167,6 +168,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let line = rawLine(for: event)
         logLines.append((line, kind))
         if logLines.count > 10_000 { logLines.removeFirst() }
+
+        // Update status bar log line
+        if settings.showLastLogLine {
+            statusBarController.updateLogLine(LogLineStripper.strip(line))
+        }
 
         // Update state
         serverState.handle(event)
@@ -250,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
 

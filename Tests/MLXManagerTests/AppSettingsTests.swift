@@ -97,4 +97,30 @@ final class AppSettingsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: oldData)
         XCTAssertEqual(decoded.logPath, "")
     }
+
+    func test_appSettings_showLastLogLine_defaultsFalse() {
+        XCTAssertEqual(AppSettings().showLastLogLine, false)
+    }
+
+    func test_appSettings_showLastLogLine_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.showLastLogLine = true
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.showLastLogLine, true)
+    }
+
+    func test_appSettings_showLastLogLine_migratesFromOldJSON() throws {
+        let oldData = Data("""
+        {
+          "ramGraphEnabled": false,
+          "ramPollInterval": 5,
+          "startAtLogin": false,
+          "logPath": "~/repos/mlx/Logs/server.log",
+          "progressCompletionThreshold": 99
+        }
+        """.utf8)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: oldData)
+        XCTAssertEqual(decoded.showLastLogLine, false)
+    }
 }
