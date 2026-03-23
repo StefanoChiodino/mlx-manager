@@ -26,6 +26,30 @@ final class UserPresetStoreTests: XCTestCase {
         XCTAssertEqual(loaded, presets)
     }
 
+    func test_userPresetStore_roundTrip_preservesAllFields() throws {
+        let preset = ServerConfig(
+            name: "Full",
+            model: "mlx-community/full-model",
+            maxTokens: 8192,
+            port: 9090,
+            prefillStepSize: 2048,
+            promptCacheSize: 8,
+            promptCacheBytes: 5 * 1024 * 1024 * 1024,
+            trustRemoteCode: true,
+            enableThinking: true,
+            extraArgs: ["--verbose"],
+            serverType: .mlxVLM,
+            kvBits: 4,
+            kvGroupSize: 32,
+            maxKvSize: 512,
+            quantizedKvStart: 100,
+            pythonPath: "/usr/local/bin/python3"
+        )
+        try UserPresetStore.save([preset], to: tempURL)
+        let loaded = try UserPresetStore.load(from: tempURL)
+        XCTAssertEqual(loaded, [preset])
+    }
+
     func test_userPresetStore_loadMissingFileThrows() {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("nonexistent-\(UUID().uuidString).yaml")

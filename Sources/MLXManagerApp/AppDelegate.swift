@@ -257,7 +257,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.setActivationPolicy(.regular)
+        installEditMenu()
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func installEditMenu() {
+        guard NSApp.mainMenu == nil || NSApp.mainMenu?.item(withTitle: "Edit") == nil else { return }
+        let mainMenu = NSApp.mainMenu ?? NSMenu()
+
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Cut",   action: #selector(NSText.cut(_:)),   keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy",  action: #selector(NSText.copy(_:)),  keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        editItem.submenu = editMenu
+        mainMenu.addItem(editItem)
+        NSApp.mainMenu = mainMenu
     }
 
     // MARK: - Persistence

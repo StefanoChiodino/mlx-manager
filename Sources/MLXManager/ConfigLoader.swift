@@ -27,6 +27,11 @@ public enum ConfigLoader {
         let trustRemoteCode: Bool?
         let enableThinking: Bool?
         let extraArgs: [String]?
+        let serverType: ServerType?
+        let kvBits: Int?
+        let kvGroupSize: Int?
+        let maxKvSize: Int?
+        let quantizedKvStart: Int?
         let pythonPath: String?
     }
 
@@ -58,6 +63,11 @@ public enum ConfigLoader {
                 trustRemoteCode: dto.trustRemoteCode ?? false,
                 enableThinking: dto.enableThinking ?? false,
                 extraArgs: dto.extraArgs ?? [],
+                serverType: dto.serverType ?? .mlxLM,
+                kvBits: dto.kvBits ?? 0,
+                kvGroupSize: dto.kvGroupSize ?? 64,
+                maxKvSize: dto.maxKvSize ?? 0,
+                quantizedKvStart: dto.quantizedKvStart ?? 0,
                 pythonPath: pythonPath
             )
         }
