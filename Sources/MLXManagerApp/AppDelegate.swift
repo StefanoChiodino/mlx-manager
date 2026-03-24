@@ -99,11 +99,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func bootstrapEnvironmentIfNeeded() {
         let presets = loadPresets()
-        let backend = presets.first?.serverType ?? .mlxLM
         let checker = EnvironmentChecker()
-        guard !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath(for: backend)) else { return }
+        let backendsNeeded = Set(presets.map(\.serverType))
+        let missing = backendsNeeded.filter { !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath(for: $0)) }
+        guard let first = missing.first else { return }
         statusBarController.environmentInstallStarted()
-        let inst = EnvironmentInstaller(backend: backend)
+        let inst = EnvironmentInstaller(backend: first)
         inst.onComplete = { [weak self] _ in
             self?.statusBarController.environmentInstallFinished()
             self?.backgroundInstaller = nil
