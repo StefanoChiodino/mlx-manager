@@ -119,21 +119,39 @@ final class ArcProgressView: NSView {
 final class StatusBarView: StatusBarViewProtocol {
     private let statusItem: NSStatusItem
     private let arcView: ArcProgressView
+    private let logLabel: NSTextField
     private var menuItemActions: [Int: () -> Void] = [:]
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         arcView = ArcProgressView()
+        logLabel = NSTextField(labelWithString: "")
+
+        logLabel.isEditable = false
+        logLabel.isBordered = false
+        logLabel.drawsBackground = false
+        logLabel.font = NSFont.menuBarFont(ofSize: 0)
+        logLabel.textColor = NSColor.labelColor
+        logLabel.lineBreakMode = .byTruncatingTail
+        logLabel.cell?.truncatesLastVisibleLine = true
+        logLabel.isHidden = true
 
         if let button = statusItem.button {
             button.title = ""
             button.image = nil
+
             arcView.translatesAutoresizingMaskIntoConstraints = false
+            logLabel.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(arcView)
+            button.addSubview(logLabel)
+
+            let pad: CGFloat = 4
             NSLayoutConstraint.activate([
+                arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: pad),
                 arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-                arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
-                arcView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
+                logLabel.leadingAnchor.constraint(equalTo: arcView.trailingAnchor, constant: pad),
+                logLabel.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -pad),
+                logLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
             ])
         }
     }
