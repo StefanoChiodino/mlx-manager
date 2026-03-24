@@ -4,11 +4,8 @@ import MLXManager
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     var onChange: (([ServerConfig], AppSettings) -> Void)?
-    var onClose: (([ServerConfig], AppSettings) -> Void)?
-    var onCancel: (([ServerConfig], AppSettings) -> Void)?
-
-    // Tracks whether a button already fired the close callback — suppresses double-call in windowWillClose
-    private var closeCallbackFired = false
+    var onDismiss: ((_ presets: [ServerConfig], _ settings: AppSettings, _ cancelled: Bool) -> Void)?
+    private var dismissed = false
 
     private var draftPresets: [ServerConfig] = []
     private var draftSettings: AppSettings = AppSettings()
@@ -704,23 +701,22 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func closeTapped() {
-        window?.makeFirstResponder(nil)  // commit any active field editor
+        window?.makeFirstResponder(nil)
         applyDetail()
-        closeCallbackFired = true
-        onClose?(draftPresets, draftSettings)
+        dismissed = true
+        onDismiss?(draftPresets, draftSettings, false)
         window?.close()
     }
 
     @objc private func cancelTapped() {
-        closeCallbackFired = true
         draftPresets = snapshotPresets
         draftSettings = snapshotSettings
-        // Revert login item state
         if snapshotSettings.startAtLogin != (startAtLoginCheckbox.state == .on) {
             if snapshotSettings.startAtLogin { LoginItemManager.enable() } else { LoginItemManager.disable() }
         }
         try? UserPresetStore.save(snapshotPresets, to: UserPresetStore.defaultURL)
-        onCancel?(snapshotPresets, snapshotSettings)
+        dismissed = true
+        onDismiss?(snapshotPresets, snapshotSettings, true)
         window?.close()
     }
 }
@@ -782,9 +778,8 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        // If closed via × or ⌘W (not via Close/Cancel buttons which call onClose/onCancel themselves)
-        if !closeCallbackFired {
-            onClose?(draftPresets, draftSettings)
+        if !dismissed {
+            onDismiss?(draftPresets, draftSettings, false)
         }
     }
 }

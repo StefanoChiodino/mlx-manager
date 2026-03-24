@@ -214,7 +214,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let swc = SettingsWindowController(presets: presets, settings: settings)
             settingsWindowController = swc
 
-            let applyChanges = { [weak self] (newPresets: [ServerConfig], newSettings: AppSettings) in
+            // onChange fires on every keystroke — only persist settings, don't rebuild the controller
+            swc.onChange = { [weak self] _, newSettings in
+                guard let self else { return }
+                self.settings = newSettings
+                self.saveSettings(newSettings)
+            }
+            swc.onDismiss = { [weak self] newPresets, newSettings, cancelled in
                 guard let self else { return }
                 self.settings = newSettings
                 self.saveSettings(newSettings)
@@ -222,17 +228,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.statusBarController.updatePresets(newPresets)
                 self.settingsWindowController = nil
             }
-
-            // onChange fires on every keystroke — only persist settings, don't rebuild the controller
-            swc.onChange = { [weak self] _, newSettings in
-                guard let self else { return }
-                self.settings = newSettings
-                self.saveSettings(newSettings)
-            }
-            // onClose fires when window closes normally — apply final state in-place
-            swc.onClose = applyChanges
-            // onCancel fires on Cancel — apply reverted snapshot in-place
-            swc.onCancel = applyChanges
         }
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
