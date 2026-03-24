@@ -37,6 +37,7 @@ public final class StatusBarController {
     private var currentSettings: AppSettings
     private var installingEnvironment = false
     private var lastDisplayState: StatusBarDisplayState = .offline
+    private var runningServer: DiscoveredServer?
 
     private var isServerRunning: Bool {
         switch lastDisplayState {
@@ -73,7 +74,8 @@ public final class StatusBarController {
     }
 
     /// Called when the server process has started.
-    public func serverDidStart() {
+    public func serverDidStart(server: DiscoveredServer? = nil) {
+        runningServer = server
         lastDisplayState = .idle
         view.updateState(.idle)
         rebuildMenu(statusText: "Server: Idle")
@@ -81,6 +83,7 @@ public final class StatusBarController {
 
     /// Called when the server process has stopped.
     public func serverDidStop() {
+        runningServer = nil
         lastDisplayState = .offline
         view.updateState(.offline)
         rebuildMenu(statusText: "Server: Offline")
@@ -90,6 +93,7 @@ public final class StatusBarController {
     public func update(state: ServerState) {
         switch state.status {
         case .offline:
+            runningServer = nil
             lastDisplayState = .offline
             view.updateState(.offline)
             rebuildMenu(statusText: "Server: Offline")
@@ -175,12 +179,22 @@ public final class StatusBarController {
         }
     }
 
+    private func runningServerTitle(for server: DiscoveredServer) -> String {
+        let model = server.model ?? "(model unknown)"
+        return "Running: \(server.serverType.descriptiveName) | \(model)"
+    }
+
     private func rebuildMenu(statusText: String) {
         var items: [StatusBarMenuItem] = []
 
         // Status text (non-clickable)
         items.append(StatusBarMenuItem(title: statusText, isEnabled: false))
         items.append(StatusBarMenuItem(title: "-", isSeparator: true))
+
+        if let runningServer, lastDisplayState != .offline {
+            items.append(StatusBarMenuItem(title: runningServerTitle(for: runningServer), isEnabled: false))
+            items.append(StatusBarMenuItem(title: "-", isSeparator: true))
+        }
 
         if installingEnvironment {
             items.append(StatusBarMenuItem(title: "Installing environment…", isEnabled: false))

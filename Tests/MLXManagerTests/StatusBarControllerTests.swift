@@ -311,6 +311,30 @@ struct StatusBarControllerTests {
         #expect(!titles.contains("Start with:"))
     }
 
+    @Test("Recovered running server shows backend and model details")
+    func recoveredRunningServerShowsBackendAndModelDetails() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        let discovered = DiscoveredServer(
+            pid: 42,
+            command: "/custom/venv/bin/python3",
+            arguments: [
+                "-m", "mlx_lm.server",
+                "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+                "--port", "8081"
+            ],
+            serverType: .mlxLM,
+            model: "mlx-community/Qwen3.5-35B-A3B-4bit",
+            port: 8081
+        )
+
+        controller.serverDidStart(server: discovered)
+
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Running: MLX-LM (text) | mlx-community/Qwen3.5-35B-A3B-4bit"))
+        #expect(titles.contains("Switch to:"))
+    }
+
     // MARK: - Environment install state
 
     @Test("environmentInstallStarted shows installing item and hides presets")

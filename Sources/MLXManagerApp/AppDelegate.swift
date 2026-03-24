@@ -125,7 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.info("adoptProcess skipped: \(error) — app likely owns the process")
         }
         loadHistoricalLog()
-        statusBarController.serverDidStart()
+        statusBarController.serverDidStart(server: found)
         if settings.ramGraphEnabled {
             startRAMPolling(pid: found.pid)
         }
