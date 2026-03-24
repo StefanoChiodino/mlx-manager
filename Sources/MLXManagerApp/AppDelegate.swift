@@ -44,7 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.onShowLog = { [weak self] in self?.showLog() }
         statusBarController.onShowHistory = { [weak self] in self?.showHistory() }
         statusBarController.onShowRAMGraph = { [weak self] in self?.showRAMGraph() }
-        statusBarController.onShowSettings = { [weak self] in self?.showSettings(presets: presets) }
+        statusBarController.onShowSettings = { [weak self] in
+            guard let self else { return }
+            self.showSettings(presets: self.loadPresets())
+        }
 
         recoverRunningServer(presets: presets)
         bootstrapEnvironmentIfNeeded()
@@ -234,25 +237,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let swc = SettingsWindowController(presets: presets, settings: settings)
             settingsWindowController = swc
 
-            let rebuildController = { [weak self] (newPresets: [ServerConfig], newSettings: AppSettings) in
+            let applyChanges = { [weak self] (newPresets: [ServerConfig], newSettings: AppSettings) in
                 guard let self else { return }
                 self.settings = newSettings
                 self.saveSettings(newSettings)
-                let view = StatusBarView()
-                self.statusBarController = StatusBarController(
-                    view: view,
-                    presets: newPresets,
-                    onStart: { [weak self] config in self?.startServer(config: config) },
-                    onStop: { [weak self] in self?.stopServer() },
-                    settings: newSettings
-                )
-                self.statusBarController.onShowLog = { [weak self] in self?.showLog() }
-                self.statusBarController.onShowHistory = { [weak self] in self?.showHistory() }
-                self.statusBarController.onShowRAMGraph = { [weak self] in self?.showRAMGraph() }
-                self.statusBarController.onShowSettings = { [weak self] in
-                    self?.showSettings(presets: newPresets)
-                }
-                self.recoverRunningServer(presets: newPresets)
+                self.statusBarController.applySettings(newSettings)
+                self.statusBarController.updatePresets(newPresets)
                 self.settingsWindowController = nil
             }
 
@@ -262,10 +252,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.settings = newSettings
                 self.saveSettings(newSettings)
             }
-            // onClose fires when window closes normally — rebuild controller with final state
-            swc.onClose = rebuildController
-            // onCancel fires on Cancel — rebuild controller with reverted snapshot
-            swc.onCancel = rebuildController
+            // onClose fires when window closes normally — apply final state in-place
+            swc.onClose = applyChanges
+            // onCancel fires on Cancel — apply reverted snapshot in-place
+            swc.onCancel = applyChanges
         }
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
