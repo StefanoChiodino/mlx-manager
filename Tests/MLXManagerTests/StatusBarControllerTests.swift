@@ -1,6 +1,31 @@
 import Testing
 @testable import MLXManager
 
+// MARK: - Test Fixtures
+
+extension ServerConfig {
+    static func fixture(name: String = "Test", pythonPath: String = "/usr/bin/python3") -> ServerConfig {
+        ServerConfig(
+            name: name,
+            model: "mlx-community/test-model",
+            maxTokens: 4096,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
+            extraArgs: [],
+            serverType: .mlxLM,
+            kvBits: 0,
+            kvGroupSize: 64,
+            maxKvSize: 0,
+            quantizedKvStart: 0,
+            pythonPath: pythonPath
+        )
+    }
+}
+
 // MARK: - Test Doubles
 
 /// Captures menu bar updates for testing without AppKit.
@@ -360,6 +385,43 @@ struct StatusBarControllerTests {
         controller.updateLogLine("some line")
         controller.updateLogLine(nil)
         #expect(view.lastLogLine == nil)
+    }
+
+    // MARK: - updatePresets
+
+    @Test("updatePresets replaces preset menu items")
+    func updatePresets_replacesPresetsAndRebuildsMenu() {
+        let view = MockStatusBarView()
+        let initial = ServerConfig.fixture(name: "Alpha")
+        let controller = StatusBarController(view: view, presets: [initial], onStart: { _ in }, onStop: {})
+
+        let updated = ServerConfig.fixture(name: "Beta")
+        controller.updatePresets([updated])
+
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Beta"))
+        #expect(!titles.contains("Alpha"))
+    }
+
+    @Test("updatePresets while running shows Switch to header")
+    func updatePresets_whileRunning_showsSwitchToHeader() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        controller.updatePresets([ServerConfig.fixture(name: "GPU")])
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Switch to:"))
+        #expect(!titles.contains("Start with:"))
+    }
+
+    @Test("updatePresets while offline shows Start with header")
+    func updatePresets_whileOffline_showsStartWithHeader() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.updatePresets([ServerConfig.fixture(name: "CPU")])
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Start with:"))
+        #expect(!titles.contains("Switch to:"))
     }
 
     // MARK: - Helpers

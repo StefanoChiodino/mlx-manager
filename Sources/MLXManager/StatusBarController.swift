@@ -30,7 +30,7 @@ public protocol StatusBarViewProtocol: AnyObject {
 /// Manages the menu bar icon state and menu, driven by ServerState.
 public final class StatusBarController {
     private let view: StatusBarViewProtocol
-    private let presets: [ServerConfig]
+    private var presets: [ServerConfig]
     private let onStart: (ServerConfig) -> Void
     private let onStop: () -> Void
     private let fileExists: (String) -> Bool
@@ -112,6 +112,12 @@ public final class StatusBarController {
     /// Called when background environment installation completes (success or failure).
     public func environmentInstallFinished() {
         installingEnvironment = false
+        rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
+    }
+
+    /// Replace the stored presets and rebuild the menu.
+    public func updatePresets(_ newPresets: [ServerConfig]) {
+        presets = newPresets
         rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
     }
 
