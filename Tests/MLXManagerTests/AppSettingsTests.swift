@@ -55,8 +55,8 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(decoded.startAtLogin, true)
     }
 
-    func test_appSettings_progressCompletionThreshold_defaultsTo99() {
-        XCTAssertEqual(AppSettings().progressCompletionThreshold, 99)
+    func test_appSettings_progressCompletionThreshold_defaultsTo0() {
+        XCTAssertEqual(AppSettings().progressCompletionThreshold, 0)
     }
 
     func test_appSettings_progressCompletionThreshold_roundTripsJSON() throws {
@@ -70,7 +70,7 @@ final class AppSettingsTests: XCTestCase {
     }
 
     func test_appSettings_progressCompletionThreshold_migratesFromOldJSON() throws {
-        // Old JSON without the field should default to 99
+        // Old JSON without the field should default to disabled
         let oldData = Data("""
         {
           "ramGraphEnabled": false,
@@ -81,7 +81,7 @@ final class AppSettingsTests: XCTestCase {
         """.utf8)
 
         let decoded = try JSONDecoder().decode(AppSettings.self, from: oldData)
-        XCTAssertEqual(decoded.progressCompletionThreshold, 99)
+        XCTAssertEqual(decoded.progressCompletionThreshold, 0)
     }
 
     func test_appSettings_migrateWithoutLogPath() throws {

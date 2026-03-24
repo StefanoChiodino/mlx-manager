@@ -6,8 +6,8 @@ public struct AppSettings: Codable, Equatable {
     public var ramPollInterval: Int = 5   // seconds: 2, 5, or 10
     public var startAtLogin: Bool = false
     public var logPath: String = "~/repos/mlx/Logs/server.log"
-    /// Treat prompt processing as complete at this percentage (0 = disabled). Default 99.
-    public var progressCompletionThreshold: Int = 99
+    /// Treat prompt processing as complete at this percentage (0 = disabled). Default 0.
+    public var progressCompletionThreshold: Int = 0
     /// Show the last server log line in the menu bar status item. Default false.
     public var showLastLogLine: Bool = false
 
@@ -28,7 +28,7 @@ public struct AppSettings: Codable, Equatable {
         ramPollInterval = try container.decode(Int.self, forKey: .ramPollInterval)
         startAtLogin = try container.decode(Bool.self, forKey: .startAtLogin)
         logPath = try container.decode(String.self, forKey: .logPath)
-        progressCompletionThreshold = try container.decodeIfPresent(Int.self, forKey: .progressCompletionThreshold) ?? 99
+        progressCompletionThreshold = try container.decodeIfPresent(Int.self, forKey: .progressCompletionThreshold) ?? 0
         showLastLogLine = try container.decodeIfPresent(Bool.self, forKey: .showLastLogLine) ?? false
     }
 }

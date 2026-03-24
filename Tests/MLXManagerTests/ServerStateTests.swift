@@ -142,14 +142,13 @@ struct ServerStateTests {
         #expect(state.status == .idle)
     }
 
-    // MARK: - HTTP completion while idle emits a record
+    // MARK: - HTTP completion while idle does not emit a record
 
-    @Test("HTTP completion while idle emits a completed request record")
-    func httpCompletionWhileIdleEmitsRecord() {
+    @Test("HTTP completion while idle does not emit a completed request record")
+    func httpCompletionWhileIdleDoesNotEmitRecord() {
         var state = ServerState()
         state.serverStarted()
         state.handle(.httpCompletion)
-        #expect(state.completedRequest != nil)
-        #expect(state.completedRequest?.tokens == 0)
+        #expect(state.completedRequest == nil)
     }
 }

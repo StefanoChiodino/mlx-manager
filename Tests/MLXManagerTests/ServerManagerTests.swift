@@ -75,9 +75,9 @@ struct ServerManagerTests {
         #expect(launcher.launchedArguments == [
             "-m", "mlx_lm.server",
             "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+            "--max-tokens", "40960",
             "--port", "8081",
             "--prefill-step-size", "4096",
-            "--max-tokens", "40960",
             "--prompt-cache-size", "4",
             "--prompt-cache-bytes", String(10 * 1024 * 1024 * 1024),
             "--trust-remote-code",
@@ -307,9 +307,9 @@ struct ServerManagerTests {
         #expect(launcher.launchedArguments == [
             "-m", "mlx_lm.server",
             "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+            "--max-tokens", "40960",
             "--port", "8081",
             "--prefill-step-size", "4096",
-            "--max-tokens", "40960",
             "--prompt-cache-size", "4",
             "--prompt-cache-bytes", String(10 * 1024 * 1024 * 1024),
             "--trust-remote-code",
@@ -751,4 +751,3 @@ struct ServerManagerTests {
         ])
     }
 }
-

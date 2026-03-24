@@ -107,6 +107,19 @@ struct StatusBarControllerTests {
         }
     }
 
+    @Test("Near-complete progress stays processing with default settings")
+    func nearCompleteStaysProcessingWithDefaultSettings() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        controller.update(state: makeState(status: .processing, current: 41056, total: 41061))
+        if case let .processing(fraction) = view.lastState {
+            #expect(fraction > 0.999)
+        } else {
+            Issue.record("Expected .processing state with default settings")
+        }
+    }
+
     @Test("Completion signal returns to idle")
     func completionReturnsToIdle() {
         let view = MockStatusBarView()
