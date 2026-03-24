@@ -92,13 +92,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         recoverRunningServer(presets: presets)
-        bootstrapEnvironmentIfNeeded()
+        bootstrapEnvironmentIfNeeded(presets: presets)
     }
 
     // MARK: - Environment bootstrap
 
-    private func bootstrapEnvironmentIfNeeded() {
-        let presets = loadPresets()
+    private func bootstrapEnvironmentIfNeeded(presets: [ServerConfig]) {
         let checker = EnvironmentChecker()
         let backendsNeeded = Set(presets.map(\.serverType))
         let missing = backendsNeeded.filter { !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath(for: $0)) }
