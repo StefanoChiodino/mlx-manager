@@ -109,6 +109,24 @@ final class ArcProgressView: NSView {
             let mX = arcRect.midX - strSize.width / 2
             let mY = arcRect.midY - strSize.height / 2
             str.draw(at: NSPoint(x: mX, y: mY))
+
+        case .failed:
+            let inset = strokeWidth / 2
+            let ringRect = arcRect.insetBy(dx: inset, dy: inset)
+            let ring = NSBezierPath(ovalIn: ringRect)
+            ring.lineWidth = strokeWidth
+            NSColor.systemRed.setStroke()
+            ring.stroke()
+
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: mFont,
+                .foregroundColor: NSColor.systemRed
+            ]
+            let str = NSAttributedString(string: "M", attributes: attrs)
+            let strSize = str.size()
+            let mX = arcRect.midX - strSize.width / 2
+            let mY = arcRect.midY - strSize.height / 2
+            str.draw(at: NSPoint(x: mX, y: mY))
         }
     }
 }

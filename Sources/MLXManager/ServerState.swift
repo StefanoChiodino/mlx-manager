@@ -5,6 +5,7 @@ public enum ServerStatus: Equatable {
     case offline
     case idle
     case processing
+    case failed
 }
 
 /// Progress info for an active request.
@@ -34,6 +35,13 @@ public struct ServerState: Equatable {
 
     public mutating func serverStopped() {
         status = .offline
+        progress = nil
+        requestStartedAt = nil
+        completedRequest = nil
+    }
+
+    public mutating func serverCrashed() {
+        status = .failed
         progress = nil
         requestStartedAt = nil
         completedRequest = nil

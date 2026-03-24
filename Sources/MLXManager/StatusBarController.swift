@@ -39,7 +39,12 @@ public final class StatusBarController {
     private var lastDisplayState: StatusBarDisplayState = .offline
 
     private var isServerRunning: Bool {
-        lastDisplayState != .offline
+        switch lastDisplayState {
+        case .idle, .processing:
+            return true
+        case .offline, .failed:
+            return false
+        }
     }
 
     // Callbacks for window actions — set by AppDelegate
@@ -109,6 +114,10 @@ public final class StatusBarController {
                     rebuildMenu(statusText: "\(currentFmt) / \(totalFmt)  (\(pct)%)")
                 }
             }
+        case .failed:
+            lastDisplayState = .failed
+            view.updateState(.failed)
+            rebuildMenu(statusText: "Server: Crashed")
         }
     }
 
@@ -121,19 +130,19 @@ public final class StatusBarController {
     /// Called when background environment installation completes (success or failure).
     public func environmentInstallFinished() {
         installingEnvironment = false
-        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 
     /// Replace the stored presets and rebuild the menu.
     public func updatePresets(_ newPresets: [ServerConfig]) {
         presets = newPresets
-        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
-        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 
     /// Select a preset by index — triggers onStart.
@@ -153,6 +162,17 @@ public final class StatusBarController {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter.string(from: NSNumber(value: n)) ?? "\(n)"
+    }
+
+    private func statusText(for displayState: StatusBarDisplayState) -> String {
+        switch displayState {
+        case .offline:
+            return "Server: Offline"
+        case .idle, .processing:
+            return "Server: Idle"
+        case .failed:
+            return "Server: Crashed"
+        }
     }
 
     private func rebuildMenu(statusText: String) {

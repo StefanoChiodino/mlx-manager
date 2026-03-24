@@ -282,6 +282,36 @@ struct ServerManagerTests {
         #expect(manager.isRunning == false)
     }
 
+    @Test("stop suppresses onExit for expected termination")
+    func stopSuppressesOnExitForExpectedTermination() throws {
+        let launcher = MockLauncher()
+        let handle = MockProcessHandle()
+        launcher.handleToReturn = handle
+        let manager = ServerManager(launcher: launcher)
+        var exitCalled = false
+        manager.onExit = { exitCalled = true }
+        let config = ServerConfig(
+            name: "test",
+            model: "test-model",
+            maxTokens: 1024,
+            port: 8080,
+            prefillStepSize: 4096,
+            promptCacheSize: 4,
+            promptCacheBytes: 10 * 1024 * 1024 * 1024,
+            trustRemoteCode: false,
+            enableThinking: false,
+            extraArgs: [],
+            pythonPath: "/usr/bin/python3"
+        )
+
+        try manager.start(config: config)
+        manager.stop()
+        launcher.lastOnExit?()
+
+        #expect(exitCalled == false)
+        #expect(manager.isRunning == false)
+    }
+
     // MARK: - Start: includes extra args
 
     @Test("start includes all extraArgs in argument list")
@@ -360,6 +390,31 @@ struct ServerManagerTests {
         #expect(manager.isRunning == true)
         #expect(manager.pid == 777)
         #expect(manager.adoptedPort == 9000)
+    }
+
+    @Test("adoptProcess with discovered server stores recovered runtime details")
+    func adoptProcess_withDiscoveredServer_storesRecoveredRuntimeDetails() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        let discovered = DiscoveredServer(
+            pid: 888,
+            command: "/custom/venv/bin/python3",
+            arguments: [
+                "-m", "mlx_lm.server",
+                "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+                "--port", "8081"
+            ],
+            serverType: .mlxLM,
+            model: "mlx-community/Qwen3.5-35B-A3B-4bit",
+            port: 8081
+        )
+
+        try manager.adoptProcess(server: discovered)
+
+        #expect(manager.isRunning == true)
+        #expect(manager.pid == 888)
+        #expect(manager.adoptedPort == 8081)
+        #expect(manager.adoptedServer == discovered)
     }
 
     // MARK: - T17: start while adopted throws alreadyRunning

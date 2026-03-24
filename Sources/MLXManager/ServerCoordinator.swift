@@ -24,6 +24,7 @@ public final class ServerCoordinator {
 
     public var isRunning: Bool { serverManager.isRunning }
     public var pid: Int32? { serverManager.pid }
+    public var adoptedServer: DiscoveredServer? { serverManager.adoptedServer }
 
     public init(
         logPath: String,
@@ -63,6 +64,14 @@ public final class ServerCoordinator {
         startTailing()
     }
 
+    public func adoptProcess(server: DiscoveredServer) throws {
+        try serverManager.adoptProcess(server: server)
+        state = ServerState()
+        state.serverStarted()
+        onStateChange?(state)
+        startTailing()
+    }
+
     // MARK: - Private
 
     private func startTailing() {
@@ -87,7 +96,8 @@ public final class ServerCoordinator {
     private func handleProcessExit() {
         logTailer?.stop()
         logTailer = nil
-        state.serverStopped()
+        state.serverCrashed()
+        onStateChange?(state)
         onProcessExit?()
     }
 

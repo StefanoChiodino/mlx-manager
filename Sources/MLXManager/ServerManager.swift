@@ -35,8 +35,12 @@ public final class ServerManager {
     private let launcher: ProcessLauncher
     private let processTerminator: ProcessTerminating
     private var process: ProcessHandle?
+    private var currentLaunchGeneration: Int?
+    private var nextLaunchGeneration: Int = 0
+    private var expectedExitGenerations: Set<Int> = []
     private var adoptedPID: Int32?
     private(set) public var adoptedPort: Int?
+    private(set) public var adoptedServer: DiscoveredServer?
 
     /// Path to redirect server stderr to. Set before calling start().
     public var logPath: String?
@@ -74,10 +78,19 @@ public final class ServerManager {
         case .mlxVLM: builder = MLXVlmArgBuilder()
         }
         let arguments = builder.arguments(for: config)
-
+        let launchGeneration = nextLaunchGeneration + 1
+        nextLaunchGeneration = launchGeneration
+        currentLaunchGeneration = launchGeneration
         process = try launcher.launch(command: config.pythonPath, arguments: arguments, logPath: logPath) { [weak self] in
-            self?.process = nil
-            self?.onExit?()
+            guard let self else { return }
+            if self.currentLaunchGeneration == launchGeneration {
+                self.process = nil
+                self.currentLaunchGeneration = nil
+            }
+            if self.expectedExitGenerations.remove(launchGeneration) != nil {
+                return
+            }
+            self.onExit?()
         }
     }
 
@@ -87,9 +100,14 @@ public final class ServerManager {
             processTerminator.terminate(pid: adopted, signal: 15) // SIGTERM
             adoptedPID = nil
             adoptedPort = nil
+            adoptedServer = nil
         } else {
+            if let launchGeneration = currentLaunchGeneration {
+                expectedExitGenerations.insert(launchGeneration)
+            }
             process?.terminate()
             process = nil
+            currentLaunchGeneration = nil
         }
     }
 
@@ -104,5 +122,14 @@ public final class ServerManager {
         if isRunning { throw ServerError.alreadyRunning }
         adoptedPID = pid
         adoptedPort = port
+        adoptedServer = nil
+    }
+
+    /// Adopt an externally-started process along with recovered runtime details.
+    public func adoptProcess(server: DiscoveredServer) throws {
+        if isRunning { throw ServerError.alreadyRunning }
+        adoptedPID = server.pid
+        adoptedPort = server.port
+        adoptedServer = server
     }
 }

@@ -70,7 +70,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         serverCoordinator.onProcessExit = { [weak self] in
             guard let self else { return }
             self.stopRAMPolling()
-            self.statusBarController.serverDidStop()
             self.resetSession()
         }
 
@@ -119,9 +118,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pidLister: SystemPIDLister(),
             argvReader: SystemProcessArgvReader()
         )
-        guard let found = scanner.findAnyServer() else { return }
+        guard let found = scanner.inspectAnyServer() else { return }
         do {
-            try serverCoordinator.adoptProcess(pid: found.pid, port: found.port)
+            try serverCoordinator.adoptProcess(server: found)
         } catch {
             logger.info("adoptProcess skipped: \(error) — app likely owns the process")
         }

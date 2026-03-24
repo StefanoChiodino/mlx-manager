@@ -7,9 +7,11 @@ final class StatusBarDisplayStateTests: XCTestCase {
         let offline = StatusBarDisplayState.offline
         let idle = StatusBarDisplayState.idle
         let processing = StatusBarDisplayState.processing(fraction: 0.67)
+        let failed = StatusBarDisplayState.failed
 
         XCTAssertEqual(offline, .offline)
         XCTAssertEqual(idle, .idle)
         XCTAssertEqual(processing, .processing(fraction: 0.67))
+        XCTAssertEqual(failed, .failed)
     }
 }

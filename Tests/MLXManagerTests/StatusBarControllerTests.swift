@@ -130,6 +130,19 @@ struct StatusBarControllerTests {
         #expect(view.lastState == .idle)
     }
 
+    @Test("Failed ServerState emits failed display state")
+    func failedStateEmitsFailedDisplayState() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        var state = ServerState()
+        state.serverStarted()
+        state.serverCrashed()
+
+        controller.update(state: state)
+
+        #expect(view.lastState == .failed)
+    }
+
     @Test("Progress at threshold snaps to idle when threshold enabled")
     func progressAtThresholdSnapsToIdle() {
         let view = MockStatusBarView()
@@ -445,6 +458,32 @@ struct StatusBarControllerTests {
         controller.update(state: state)
         let titles = view.menuItems.map(\.title)
         #expect(titles.contains("Stop"))
+    }
+
+    @Test("failed ServerState shows crashed status text")
+    func update_failedState_showsCrashedStatusText() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        var state = ServerState()
+        state.serverStarted()
+        state.serverCrashed()
+
+        controller.update(state: state)
+
+        #expect(view.menuItems.first?.title == "Server: Crashed")
+    }
+
+    @Test("failed ServerState does not show Stop item")
+    func update_failedState_hidesStopItem() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        var state = ServerState()
+        state.serverStarted()
+        state.serverCrashed()
+
+        controller.update(state: state)
+
+        #expect(view.menuItems.map(\.title).contains("Stop") == false)
     }
 
     // MARK: - Helpers

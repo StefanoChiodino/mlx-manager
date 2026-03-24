@@ -93,19 +93,22 @@ struct ServerCoordinatorTests {
         #expect(receivedState?.status == .processing)
     }
 
-    @Test("process exit fires onProcessExit and state becomes offline")
-    func test_processExit_setsStateToOffline() throws {
+    @Test("process exit fires onProcessExit and state becomes failed")
+    func test_processExit_setsStateToFailed() throws {
         let launcher = MockProcessLauncherForCoordinator()
         let (coordinator, _) = makeCoordinator(launcher: launcher)
         try coordinator.start(config: ServerConfig.fixture())
 
         var exitFired = false
+        var receivedState: ServerState?
+        coordinator.onStateChange = { receivedState = $0 }
         coordinator.onProcessExit = { exitFired = true }
 
         launcher.exitCallback?()
 
         #expect(exitFired)
-        #expect(coordinator.state.status == .offline)
+        #expect(coordinator.state.status == .failed)
+        #expect(receivedState?.status == .failed)
     }
 
     @Test("start when already running throws alreadyRunning")
@@ -115,5 +118,31 @@ struct ServerCoordinatorTests {
         #expect(throws: ServerError.alreadyRunning) {
             try coordinator.start(config: ServerConfig.fixture())
         }
+    }
+
+    @Test("adopt discovered server preserves recovered runtime details")
+    func test_adoptDiscoveredServer_preservesRecoveredRuntimeDetails() throws {
+        let tailer = MockLogTailer()
+        let (coordinator, _) = makeCoordinator(tailer: tailer)
+        let discovered = DiscoveredServer(
+            pid: 55,
+            command: "/custom/venv/bin/python3",
+            arguments: [
+                "-m", "mlx_vlm.server",
+                "--model", "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+                "--port", "8082"
+            ],
+            serverType: .mlxVLM,
+            model: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+            port: 8082
+        )
+
+        try coordinator.adoptProcess(server: discovered)
+
+        #expect(coordinator.isRunning)
+        #expect(coordinator.pid == 55)
+        #expect(coordinator.adoptedServer == discovered)
+        #expect(coordinator.state.status == .idle)
+        #expect(tailer.started)
     }
 }

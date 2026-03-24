@@ -46,6 +46,16 @@ struct ServerStateTests {
         #expect(state.progress == nil)
     }
 
+    @Test("serverCrashed transitions processing → failed and clears progress")
+    func serverCrashedFromProcessing() {
+        var state = ServerState()
+        state.serverStarted()
+        state.handle(.progress(current: 100, total: 1000, percentage: 10.0))
+        state.serverCrashed()
+        #expect(state.status == .failed)
+        #expect(state.progress == nil)
+    }
+
     // MARK: - Idle → Processing transition (progress event)
 
     @Test("Progress event transitions idle → processing")
