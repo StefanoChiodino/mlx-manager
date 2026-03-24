@@ -81,6 +81,14 @@ public struct ProcessScanner {
         self.argvReader = argvReader
     }
 
+    /// Returns the first discovered server process for any backend, or nil.
+    public func findAnyServer() -> DiscoveredProcess? {
+        for backend in ServerType.allCases {
+            if let found = findServer(backend: backend) { return found }
+        }
+        return nil
+    }
+
     /// Returns the first discovered server process for the given backend, or nil.
     public func findServer(backend: ServerType) -> DiscoveredProcess? {
         for pid in pidLister.allPIDs() {

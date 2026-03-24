@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pidLister: SystemPIDLister(),
             argvReader: SystemProcessArgvReader()
         )
-        guard let found = scanner.findServer(backend: presets.first?.serverType ?? .mlxLM) else { return }
+        guard let found = scanner.findAnyServer() else { return }
         try? serverManager.adoptProcess(pid: found.pid, port: found.port)
         serverState = ServerState()
         serverState.serverStarted()

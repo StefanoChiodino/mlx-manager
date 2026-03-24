@@ -262,4 +262,36 @@ class ProcessScannerBackendTests: XCTestCase {
         )
         XCTAssertNil(scanner.findServer(backend: .mlxVLM))
     }
+
+    // findAnyServer tests
+
+    func test_findAnyServer_lmRunning_returnsIt() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([30]),
+            argvReader: StubProcessArgvReader([
+                30: ["/venv/bin/python", "-m", "mlx_lm.server", "--port", "8080"]
+            ])
+        )
+        XCTAssertEqual(scanner.findAnyServer(), DiscoveredProcess(pid: 30, port: 8080))
+    }
+
+    func test_findAnyServer_vlmRunning_returnsIt() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([31]),
+            argvReader: StubProcessArgvReader([
+                31: ["/venv/bin/python", "-m", "mlx_vlm.server", "--port", "8082"]
+            ])
+        )
+        XCTAssertEqual(scanner.findAnyServer(), DiscoveredProcess(pid: 31, port: 8082))
+    }
+
+    func test_findAnyServer_nothingRunning_returnsNil() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([32]),
+            argvReader: StubProcessArgvReader([
+                32: ["/bin/bash", "-c", "echo hello"]
+            ])
+        )
+        XCTAssertNil(scanner.findAnyServer())
+    }
 }
