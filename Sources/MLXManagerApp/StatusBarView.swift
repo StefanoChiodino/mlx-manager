@@ -117,6 +117,8 @@ final class ArcProgressView: NSView {
 
 /// AppKit implementation of StatusBarViewProtocol using NSStatusItem + ArcProgressView.
 final class StatusBarView: StatusBarViewProtocol {
+    private static let pad: CGFloat = 4
+
     private let statusItem: NSStatusItem
     private let arcView: ArcProgressView
     private let logLabel: NSTextField
@@ -142,7 +144,7 @@ final class StatusBarView: StatusBarViewProtocol {
             button.addSubview(arcView)
             button.addSubview(logLabel)
 
-            let pad: CGFloat = 4
+            let pad = Self.pad
             NSLayoutConstraint.activate([
                 arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: pad),
                 arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
@@ -249,7 +251,7 @@ final class StatusBarView: StatusBarViewProtocol {
     func updateLogLine(_ line: String?) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            let pad: CGFloat = 4
+            let pad = Self.pad
             if let line {
                 self.logLabel.stringValue = line
                 self.logLabel.isHidden = false
