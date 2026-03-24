@@ -25,7 +25,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MLXManagerTests",
-            dependencies: ["MLXManager"],
+            dependencies: ["MLXManager", "MLXManagerApp"],
             path: "Tests/MLXManagerTests"
         ),
     ]

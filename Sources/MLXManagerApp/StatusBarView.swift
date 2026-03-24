@@ -146,11 +146,11 @@ final class StatusBarView: StatusBarViewProtocol {
 
             let pad = Self.pad
             NSLayoutConstraint.activate([
-                arcView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: pad),
-                arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-                logLabel.leadingAnchor.constraint(equalTo: arcView.trailingAnchor, constant: pad),
-                logLabel.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -pad),
+                logLabel.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: pad),
                 logLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+                arcView.leadingAnchor.constraint(equalTo: logLabel.trailingAnchor, constant: pad),
+                arcView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -pad),
+                arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
             ])
         }
     }
