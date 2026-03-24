@@ -12,6 +12,32 @@ public struct DiscoveredProcess: Equatable {
     }
 }
 
+/// A running mlx server with recovered launch details from argv inspection.
+public struct DiscoveredServer: Equatable {
+    public let pid: Int32
+    public let command: String
+    public let arguments: [String]
+    public let serverType: ServerType
+    public let model: String?
+    public let port: Int
+
+    public init(
+        pid: Int32,
+        command: String,
+        arguments: [String],
+        serverType: ServerType,
+        model: String?,
+        port: Int
+    ) {
+        self.pid = pid
+        self.command = command
+        self.arguments = arguments
+        self.serverType = serverType
+        self.model = model
+        self.port = port
+    }
+}
+
 /// Returns all PIDs currently running on the system.
 public protocol PIDListing {
     func allPIDs() -> [Int32]
@@ -91,10 +117,32 @@ public struct ProcessScanner {
 
     /// Returns the first discovered server process for the given backend, or nil.
     public func findServer(backend: ServerType) -> DiscoveredProcess? {
+        guard let server = inspectServer(backend: backend) else { return nil }
+        return DiscoveredProcess(pid: server.pid, port: server.port)
+    }
+
+    /// Returns the first discovered server plus recovered runtime details, or nil.
+    public func inspectAnyServer() -> DiscoveredServer? {
+        for backend in ServerType.allCases {
+            if let found = inspectServer(backend: backend) { return found }
+        }
+        return nil
+    }
+
+    /// Returns the first discovered server for the given backend plus recovered runtime details, or nil.
+    public func inspectServer(backend: ServerType) -> DiscoveredServer? {
         for pid in pidLister.allPIDs() {
             guard let args = argvReader.argv(for: pid) else { continue }
             guard isServer(args, backend: backend) else { continue }
-            return DiscoveredProcess(pid: pid, port: extractPort(from: args))
+            guard let command = args.first else { continue }
+            return DiscoveredServer(
+                pid: pid,
+                command: command,
+                arguments: Array(args.dropFirst()),
+                serverType: backend,
+                model: extractArgumentValue(named: "--model", from: args),
+                port: extractPort(from: args)
+            )
         }
         return nil
     }
@@ -119,5 +167,12 @@ public struct ProcessScanner {
            args.indices.contains(idx + 1),
            let port = Int(args[idx + 1]) { return port }
         return 8080
+    }
+
+    private func extractArgumentValue(named flag: String, from args: [String]) -> String? {
+        guard let idx = args.firstIndex(of: flag), args.indices.contains(idx + 1) else {
+            return nil
+        }
+        return args[idx + 1]
     }
 }

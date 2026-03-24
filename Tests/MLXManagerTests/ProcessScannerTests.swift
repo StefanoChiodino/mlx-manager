@@ -294,4 +294,33 @@ class ProcessScannerBackendTests: XCTestCase {
         )
         XCTAssertNil(scanner.findAnyServer())
     }
+
+    func test_inspectServer_moduleInvocation_recoversRuntimeDetails() {
+        let scanner = ProcessScanner(
+            pidLister: StubPIDLister([40]),
+            argvReader: StubProcessArgvReader([
+                40: [
+                    "/custom/venv/bin/python3",
+                    "-m", "mlx_lm.server",
+                    "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+                    "--max-tokens", "40960",
+                    "--port", "8081"
+                ]
+            ])
+        )
+
+        let discovered = scanner.inspectServer(backend: .mlxLM)
+
+        XCTAssertEqual(discovered?.pid, 40)
+        XCTAssertEqual(discovered?.command, "/custom/venv/bin/python3")
+        XCTAssertEqual(discovered?.arguments, [
+            "-m", "mlx_lm.server",
+            "--model", "mlx-community/Qwen3.5-35B-A3B-4bit",
+            "--max-tokens", "40960",
+            "--port", "8081"
+        ])
+        XCTAssertEqual(discovered?.serverType, .mlxLM)
+        XCTAssertEqual(discovered?.model, "mlx-community/Qwen3.5-35B-A3B-4bit")
+        XCTAssertEqual(discovered?.port, 8081)
+    }
 }
