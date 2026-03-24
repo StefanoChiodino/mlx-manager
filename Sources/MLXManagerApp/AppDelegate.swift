@@ -3,9 +3,7 @@ import MLXManager
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
-    private var serverManager: ServerManager!
-    private var logTailer: LogTailer?
-    private var serverState = ServerState()
+    private var serverCoordinator: ServerCoordinator!
     private var settings = AppSettings()
 
     // Environment bootstrap
@@ -28,9 +26,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = loadSettings()
         let presets = loadPresets()
-        serverManager = ServerManager(launcher: RealProcessLauncher())
-        serverManager.logPath = logPath
-        serverManager.onExit = { [weak self] in self?.handleProcessExit() }
+
+        serverCoordinator = ServerCoordinator(
+            logPath: logPath,
+            launcher: RealProcessLauncher(),
+            logTailerFactory: { path, onEvent in
+                LogTailer(
+                    path: path,
+                    fileHandleFactory: { p in
+                        guard let fh = FileHandle(forReadingAtPath: p) else { return nil }
+                        return RealFileHandle(fh)
+                    },
+                    watcher: RealFileWatcher(),
+                    onEvent: onEvent
+                )
+            }
+        )
+
+        serverCoordinator.onStateChange = { [weak self] state in
+            guard let self else { return }
+            self.statusBarController.update(state: state)
+        }
+
+        serverCoordinator.onRequestCompleted = { [weak self] record in
+            guard let self else { return }
+            self.requestHistory.append(record)
+            if self.requestHistory.count > 500 { self.requestHistory.removeFirst() }
+        }
+
+        serverCoordinator.onLogEvent = { [weak self] event, line in
+            guard let self else { return }
+            let kind = LogLineKind(event)
+            self.logLines.append((line, kind))
+            if self.logLines.count > 10_000 { self.logLines.removeFirst() }
+            if self.settings.showLastLogLine {
+                self.statusBarController.updateLogLine(LogLineStripper.strip(line))
+            }
+        }
+
+        serverCoordinator.onProcessExit = { [weak self] in
+            guard let self else { return }
+            self.stopRAMPolling()
+            self.statusBarController.serverDidStop()
+            self.resetSession()
+        }
 
         let view = StatusBarView()
         statusBarController = StatusBarController(
@@ -78,11 +117,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             argvReader: SystemProcessArgvReader()
         )
         guard let found = scanner.findAnyServer() else { return }
-        try? serverManager.adoptProcess(pid: found.pid, port: found.port)
-        serverState = ServerState()
-        serverState.serverStarted()
+        try? serverCoordinator.adoptProcess(pid: found.pid, port: found.port)
+        loadHistoricalLog()
         statusBarController.serverDidStart()
-        startTailing()
         if settings.ramGraphEnabled {
             startRAMPolling(pid: found.pid)
         }
@@ -93,13 +130,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startServer(config: ServerConfig) {
         let resolvedConfig = config.withResolvedPythonPath()
         do {
-            try serverManager.start(config: resolvedConfig)
-            serverState = ServerState()
-            serverState.serverStarted()
+            try serverCoordinator.start(config: resolvedConfig)
+            loadHistoricalLog()
             statusBarController.serverDidStart()
-            startTailing()
-
-            if settings.ramGraphEnabled, let pid = serverManager.pid {
+            if settings.ramGraphEnabled, let pid = serverCoordinator.pid {
                 startRAMPolling(pid: pid)
             }
         } catch {
@@ -109,19 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func stopServer() {
         stopRAMPolling()
-        logTailer?.stop()
-        logTailer = nil
-        serverManager.stop()
-        serverState.serverStopped()
-        statusBarController.serverDidStop()
-        resetSession()
-    }
-
-    private func handleProcessExit() {
-        stopRAMPolling()
-        logTailer?.stop()
-        logTailer = nil
-        serverState.serverStopped()
+        serverCoordinator.stop()
         statusBarController.serverDidStop()
         resetSession()
     }
@@ -133,27 +155,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.updateLogLine(nil)
     }
 
-    // MARK: - Log tailing
+    // MARK: - Log loading
 
     private var logPath: String {
         NSString(string: settings.logPath).expandingTildeInPath
-    }
-
-    private func startTailing() {
-        loadHistoricalLog()
-        logTailer?.stop()
-        logTailer = LogTailer(
-            path: logPath,
-            fileHandleFactory: { path in
-                guard let fh = FileHandle(forReadingAtPath: path) else { return nil }
-                return RealFileHandle(fh)
-            },
-            watcher: RealFileWatcher(),
-            onEvent: { [weak self] event in
-                self?.handleLogEvent(event)
-            }
-        )
-        logTailer?.start()
     }
 
     private func loadHistoricalLog() {
@@ -163,41 +168,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let result = HistoricalLogLoader.load(from: content, maxLines: 100)
         logLines.append(contentsOf: result.lines)
         requestHistory.append(contentsOf: result.records)
-    }
-
-    private func handleLogEvent(_ event: LogEvent) {
-        // Feed log window
-        let kind = LogLineKind(event)
-        let line = rawLine(for: event)
-        logLines.append((line, kind))
-        if logLines.count > 10_000 { logLines.removeFirst() }
-
-        // Update status bar log line
-        if settings.showLastLogLine {
-            statusBarController.updateLogLine(LogLineStripper.strip(line))
-        }
-
-        // Update state
-        serverState.handle(event)
-        statusBarController.update(state: serverState)
-
-        // Drain completed request
-        if let record = serverState.completedRequest {
-            requestHistory.append(record)
-            if requestHistory.count > 500 { requestHistory.removeFirst() }
-            serverState.clearCompletedRequest()
-        }
-    }
-
-    private func rawLine(for event: LogEvent) -> String {
-        switch event {
-        case let .progress(current, total, _):
-            return "Prompt processing progress: \(current)/\(total)"
-        case let .kvCaches(gpu, tokens):
-            return String(format: "KV Caches: ... %.2f GB, latest user cache %d tokens", gpu, tokens)
-        case .httpCompletion:
-            return "POST /v1/chat/completions HTTP/1.1\" 200"
-        }
     }
 
     // MARK: - RAM polling
