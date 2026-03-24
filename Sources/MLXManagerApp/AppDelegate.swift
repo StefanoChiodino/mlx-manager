@@ -1,5 +1,8 @@
 import AppKit
 import MLXManager
+import os
+
+private let logger = Logger(subsystem: "com.mlx-manager", category: "app")
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
@@ -117,7 +120,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             argvReader: SystemProcessArgvReader()
         )
         guard let found = scanner.findAnyServer() else { return }
-        try? serverCoordinator.adoptProcess(pid: found.pid, port: found.port)
+        do {
+            try serverCoordinator.adoptProcess(pid: found.pid, port: found.port)
+        } catch {
+            logger.info("adoptProcess skipped: \(error) — app likely owns the process")
+        }
         loadHistoricalLog()
         statusBarController.serverDidStart()
         if settings.ramGraphEnabled {
@@ -137,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 startRAMPolling(pid: pid)
             }
         } catch {
-            // Already running — ignore
+            logger.warning("startServer failed: \(error)")
         }
     }
 
@@ -254,15 +261,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func loadPresets() -> [ServerConfig] {
         // Try user file first, fall back to bundled
-        if let presets = try? UserPresetStore.load(from: UserPresetStore.defaultURL) {
+        do {
+            let presets = try UserPresetStore.load(from: UserPresetStore.defaultURL)
             return presets.map { $0.withResolvedPythonPath() }
+        } catch {
+            logger.error("loadPresets (user file) failed: \(error)")
+            // Fall through to bundled presets
         }
-        guard let url = bundledPresetsURL(),
-              let yaml = try? String(contentsOf: url, encoding: .utf8),
-              let presets = try? ConfigLoader.load(yaml: yaml) else {
+        guard let url = bundledPresetsURL() else { return [] }
+        do {
+            let yaml = try String(contentsOf: url, encoding: .utf8)
+            let presets = try ConfigLoader.load(yaml: yaml)
+            return presets.map { $0.withResolvedPythonPath() }
+        } catch {
+            logger.error("loadPresets failed: \(error)")
             return []
         }
-        return presets.map { $0.withResolvedPythonPath() }
     }
 
     /// Returns the URL for the bundled presets.yaml.
@@ -273,20 +287,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func loadSettings() -> AppSettings {
-        guard let data = try? Data(contentsOf: settingsURL),
-              let s = try? JSONDecoder().decode(AppSettings.self, from: data) else {
+        do {
+            let data = try Data(contentsOf: settingsURL)
+            return try JSONDecoder().decode(AppSettings.self, from: data)
+        } catch {
+            logger.info("loadSettings using defaults: \(error)")
             return AppSettings()
         }
-        return s
     }
 
     private func saveSettings(_ s: AppSettings) {
-        guard let data = try? JSONEncoder().encode(s) else { return }
-        try? FileManager.default.createDirectory(
-            at: settingsURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try? data.write(to: settingsURL)
+        do {
+            let data = try JSONEncoder().encode(s)
+            try FileManager.default.createDirectory(
+                at: settingsURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try data.write(to: settingsURL)
+        } catch {
+            logger.error("saveSettings failed: \(error)")
+        }
     }
 
 }
