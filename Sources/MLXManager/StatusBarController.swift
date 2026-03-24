@@ -34,9 +34,13 @@ public final class StatusBarController {
     private let onStart: (ServerConfig) -> Void
     private let onStop: () -> Void
     private let fileExists: (String) -> Bool
-    private var running = false
     private var currentSettings: AppSettings
     private var installingEnvironment = false
+    private var lastDisplayState: StatusBarDisplayState = .offline
+
+    private var isServerRunning: Bool {
+        lastDisplayState != .offline
+    }
 
     // Callbacks for window actions — set by AppDelegate
     public var onShowLog: (() -> Void)?
@@ -58,20 +62,21 @@ public final class StatusBarController {
         self.onStop = onStop
         self.fileExists = fileExists
         self.currentSettings = settings
+        lastDisplayState = .offline
         view.updateState(.offline)
         rebuildMenu(statusText: "Server: Offline")
     }
 
     /// Called when the server process has started.
     public func serverDidStart() {
-        running = true
+        lastDisplayState = .idle
         view.updateState(.idle)
         rebuildMenu(statusText: "Server: Idle")
     }
 
     /// Called when the server process has stopped.
     public func serverDidStop() {
-        running = false
+        lastDisplayState = .offline
         view.updateState(.offline)
         rebuildMenu(statusText: "Server: Offline")
     }
@@ -80,9 +85,11 @@ public final class StatusBarController {
     public func update(state: ServerState) {
         switch state.status {
         case .offline:
+            lastDisplayState = .offline
             view.updateState(.offline)
             rebuildMenu(statusText: "Server: Offline")
         case .idle:
+            lastDisplayState = .idle
             view.updateState(.idle)
             rebuildMenu(statusText: "Server: Idle")
         case .processing:
@@ -90,9 +97,11 @@ public final class StatusBarController {
                 let fraction = Double(progress.current) / Double(progress.total)
                 let threshold = currentSettings.progressCompletionThreshold
                 if threshold > 0 && fraction >= Double(threshold) / 100.0 {
+                    lastDisplayState = .idle
                     view.updateState(.idle)
                     rebuildMenu(statusText: "Server: Idle")
                 } else {
+                    lastDisplayState = .processing(fraction: fraction)
                     view.updateState(.processing(fraction: fraction))
                     let pct = Int((fraction * 100).rounded())
                     let currentFmt = formatTokens(progress.current)
@@ -112,19 +121,19 @@ public final class StatusBarController {
     /// Called when background environment installation completes (success or failure).
     public func environmentInstallFinished() {
         installingEnvironment = false
-        rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
     }
 
     /// Replace the stored presets and rebuild the menu.
     public func updatePresets(_ newPresets: [ServerConfig]) {
         presets = newPresets
-        rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
     }
 
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
-        rebuildMenu(statusText: running ? "Server: Idle" : "Server: Offline")
+        rebuildMenu(statusText: isServerRunning ? "Server: Idle" : "Server: Offline")
     }
 
     /// Select a preset by index — triggers onStart.
@@ -157,7 +166,7 @@ public final class StatusBarController {
             items.append(StatusBarMenuItem(title: "Installing environment…", isEnabled: false))
         } else {
             // Preset section header
-            let presetHeader = running ? "Switch to:" : "Start with:"
+            let presetHeader = isServerRunning ? "Switch to:" : "Start with:"
             items.append(StatusBarMenuItem(title: presetHeader, isEnabled: false))
 
             // Preset items
@@ -165,7 +174,7 @@ public final class StatusBarController {
                 let idx = i
                 let envReady = fileExists(preset.pythonPath)
                 let title = envReady ? preset.name : "\(preset.name)  (env missing)"
-                let enabled = !running && envReady
+                let enabled = !isServerRunning && envReady
                 items.append(StatusBarMenuItem(
                     title: title,
                     isEnabled: enabled,
@@ -174,7 +183,7 @@ public final class StatusBarController {
             }
         }
 
-        if running {
+        if isServerRunning {
             items.append(StatusBarMenuItem(title: "-", isSeparator: true))
             items.append(StatusBarMenuItem(
                 title: "Stop",

@@ -399,6 +399,41 @@ struct StatusBarControllerTests {
         #expect(!titles.contains("Switch to:"))
     }
 
+    // MARK: - isServerRunning derived state
+
+    @Test("isServerRunning derived from display state after serverDidStart")
+    func isServerRunning_derivedFromDisplayState_afterStart() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Switch to:"))
+    }
+
+    @Test("isServerRunning derived from display state after serverDidStop")
+    func isServerRunning_derivedFromDisplayState_afterStop() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        controller.serverDidStop()
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Start with:"))
+        #expect(!titles.contains("Switch to:"))
+    }
+
+    @Test("processing ServerState causes menu to show Stop item")
+    func update_processingState_menuShowsStopItem() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {})
+        controller.serverDidStart()
+        var state = ServerState()
+        state.serverStarted()
+        state.handle(.progress(current: 10, total: 100, percentage: 10.0))
+        controller.update(state: state)
+        let titles = view.menuItems.map(\.title)
+        #expect(titles.contains("Stop"))
+    }
+
     // MARK: - Helpers
 
     private func makeState(status: ServerStatus, current: Int? = nil, total: Int? = nil) -> ServerState {
