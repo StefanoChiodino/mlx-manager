@@ -1,31 +1,6 @@
 import Testing
 @testable import MLXManager
 
-// MARK: - Test Fixtures
-
-extension ServerConfig {
-    static func fixture(name: String = "Test", pythonPath: String = "/usr/bin/python3") -> ServerConfig {
-        ServerConfig(
-            name: name,
-            model: "mlx-community/test-model",
-            maxTokens: 4096,
-            port: 8080,
-            prefillStepSize: 4096,
-            promptCacheSize: 4,
-            promptCacheBytes: 10 * 1024 * 1024 * 1024,
-            trustRemoteCode: false,
-            enableThinking: false,
-            extraArgs: [],
-            serverType: .mlxLM,
-            kvBits: 0,
-            kvGroupSize: 64,
-            maxKvSize: 0,
-            quantizedKvStart: 0,
-            pythonPath: pythonPath
-        )
-    }
-}
-
 // MARK: - Test Doubles
 
 /// Captures menu bar updates for testing without AppKit.
@@ -188,8 +163,8 @@ struct StatusBarControllerTests {
     func menuIncludesPresetsAndQuit() {
         let view = MockStatusBarView()
         let presets = [
-            ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3"),
-            ServerConfig(name: "8-bit 80k", model: "m2", maxTokens: 81920, extraArgs: [], pythonPath: "/usr/bin/python3"),
+            ServerConfig.fixture(name: "4-bit 40k"),
+            ServerConfig.fixture(name: "8-bit 80k"),
         ]
         let _ = StatusBarController(view: view, presets: presets, onStart: { _ in }, onStop: {})
         #expect(view.menuBuilt == true)
@@ -221,7 +196,7 @@ struct StatusBarControllerTests {
     func selectingPresetTriggersStart() {
         let view = MockStatusBarView()
         var startedWith: ServerConfig?
-        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let preset = ServerConfig.fixture(name: "4-bit 40k")
         let controller = StatusBarController(
             view: view, presets: [preset],
             onStart: { startedWith = $0 },
@@ -250,7 +225,7 @@ struct StatusBarControllerTests {
     @Test("Preset with missing pythonPath is disabled and shows env missing suffix")
     func presetWithMissingPythonIsDisabled() {
         let view = MockStatusBarView()
-        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/nonexistent/python")
+        let preset = ServerConfig.fixture(name: "4-bit 40k", pythonPath: "/nonexistent/python")
         let _ = StatusBarController(
             view: view, presets: [preset],
             onStart: { _ in }, onStop: {},
@@ -265,7 +240,7 @@ struct StatusBarControllerTests {
     @Test("Preset with valid pythonPath is enabled")
     func presetWithValidPythonIsEnabled() {
         let view = MockStatusBarView()
-        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let preset = ServerConfig.fixture(name: "4-bit 40k")
         let _ = StatusBarController(
             view: view, presets: [preset],
             onStart: { _ in }, onStop: {},
@@ -280,7 +255,7 @@ struct StatusBarControllerTests {
     @Test("Offline menu shows 'Start with:' header before presets")
     func offlineMenuShowsStartWithHeader() {
         let view = MockStatusBarView()
-        let preset = ServerConfig(name: "4-bit 40k", model: "m1", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let preset = ServerConfig.fixture(name: "4-bit 40k")
         let _ = StatusBarController(view: view, presets: [preset], onStart: { _ in }, onStop: {})
         let titles = view.menuItems.map(\.title)
         let headerIdx = titles.firstIndex(of: "Start with:")
@@ -315,7 +290,7 @@ struct StatusBarControllerTests {
     @Test("environmentInstallStarted shows installing item and hides presets")
     func test_environmentInstallStarted_showsInstallingItem() {
         let view = MockStatusBarView()
-        let preset = ServerConfig(name: "4-bit 40k", model: "m", maxTokens: 40960, extraArgs: [], pythonPath: "/p")
+        let preset = ServerConfig.fixture(name: "4-bit 40k", pythonPath: "/nonexistent/python")
         let controller = StatusBarController(
             view: view, presets: [preset],
             onStart: { _ in }, onStop: {},
@@ -339,7 +314,7 @@ struct StatusBarControllerTests {
     @Test("environmentInstallFinished shows presets again")
     func test_environmentInstallFinished_showsPresets() {
         let view = MockStatusBarView()
-        let preset = ServerConfig(name: "4-bit 40k", model: "m", maxTokens: 40960, extraArgs: [], pythonPath: "/usr/bin/python3")
+        let preset = ServerConfig.fixture(name: "4-bit 40k")
         let controller = StatusBarController(
             view: view, presets: [preset],
             onStart: { _ in }, onStop: {},
