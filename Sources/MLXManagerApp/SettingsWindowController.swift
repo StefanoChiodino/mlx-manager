@@ -4,7 +4,11 @@ import MLXManager
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     var onChange: (([ServerConfig], AppSettings) -> Void)?
+    var onClose: (([ServerConfig], AppSettings) -> Void)?
     var onCancel: (([ServerConfig], AppSettings) -> Void)?
+
+    // Tracks whether a button already fired the close callback — suppresses double-call in windowWillClose
+    private var closeCallbackFired = false
 
     private var draftPresets: [ServerConfig] = []
     private var draftSettings: AppSettings = AppSettings()
@@ -702,10 +706,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     @objc private func closeTapped() {
         window?.makeFirstResponder(nil)  // commit any active field editor
         applyDetail()
+        closeCallbackFired = true
+        onClose?(draftPresets, draftSettings)
         window?.close()
     }
 
     @objc private func cancelTapped() {
+        closeCallbackFired = true
         draftPresets = snapshotPresets
         draftSettings = snapshotSettings
         // Revert login item state
@@ -775,6 +782,10 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // If closed via × or ⌘W (not via Close/Cancel buttons which call onClose/onCancel themselves)
+        if !closeCallbackFired {
+            onClose?(draftPresets, draftSettings)
+        }
     }
 }
 
