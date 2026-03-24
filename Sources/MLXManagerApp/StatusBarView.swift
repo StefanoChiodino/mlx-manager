@@ -127,9 +127,6 @@ final class StatusBarView: StatusBarViewProtocol {
         arcView = ArcProgressView()
         logLabel = NSTextField(labelWithString: "")
 
-        logLabel.isEditable = false
-        logLabel.isBordered = false
-        logLabel.drawsBackground = false
         logLabel.font = NSFont.menuBarFont(ofSize: 0)
         logLabel.textColor = NSColor.labelColor
         logLabel.lineBreakMode = .byTruncatingTail
@@ -251,19 +248,18 @@ final class StatusBarView: StatusBarViewProtocol {
 
     func updateLogLine(_ line: String?) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, let button = self.statusItem.button else { return }
+            guard let self else { return }
+            let pad: CGFloat = 4
             if let line {
-                // Pad with leading spaces to clear the arc icon on the left
+                self.logLabel.stringValue = line
+                self.logLabel.isHidden = false
                 let arcWidth = self.arcView.intrinsicContentSize.width
-                let font = button.font ?? NSFont.menuBarFont(ofSize: 0)
-                let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
-                let spacesNeeded = Int(ceil((arcWidth + 6) / spaceWidth))
-                let padding = String(repeating: " ", count: spacesNeeded)
-                button.title = padding + line
-                let textWidth = (button.title as NSString).size(withAttributes: [.font: font]).width
-                self.statusItem.length = textWidth + 8 // 4pt padding each side
+                let font = self.logLabel.font ?? NSFont.menuBarFont(ofSize: 0)
+                let textWidth = (line as NSString).size(withAttributes: [.font: font]).width
+                self.statusItem.length = pad + arcWidth + pad + textWidth + pad
             } else {
-                button.title = ""
+                self.logLabel.stringValue = ""
+                self.logLabel.isHidden = true
                 self.statusItem.length = NSStatusItem.variableLength
             }
         }
