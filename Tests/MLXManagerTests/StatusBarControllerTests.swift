@@ -46,6 +46,9 @@ final class MockStatusBarView: StatusBarViewProtocol {
     func updateLogLine(_ line: String?) {
         lastLogLine = line
     }
+
+    var lastTPSValue: Double?? = .none   // .none = never called, .some(nil) = called with nil
+    func updateTPS(_ tps: Double?) { lastTPSValue = .some(tps) }
 }
 
 @Suite("StatusBarController")
@@ -534,6 +537,84 @@ struct StatusBarControllerTests {
         controller.update(state: state)
 
         #expect(view.menuItems.map(\.title).contains("Stop") == false)
+    }
+
+    // MARK: - Prefill TPS
+
+    @Test("Qualifying record updates lastPrefillTPS and calls updateTPS")
+    func update_qualifyingRecord_updatesLastPrefillTPS() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        #expect(controller.lastPrefillTPS != nil)
+        if case .some(let tps) = view.lastTPSValue {
+            #expect(abs((tps ?? 0) - 2000.0) < 1.0)
+        } else {
+            Issue.record("updateTPS was never called")
+        }
+    }
+
+    @Test("Non-qualifying record leaves lastPrefillTPS unchanged")
+    func update_nonQualifyingRecord_doesNotChangePrefillTPS() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        let firstTPS = controller.lastPrefillTPS
+        state.clearCompletedRequest()
+        state.handle(.progress(current: 100, total: 200, percentage: 50.0, timestamp: Date()))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 100))
+        controller.update(state: state)
+        #expect(controller.lastPrefillTPS == firstTPS)
+    }
+
+    @Test("serverDidStop clears lastPrefillTPS and calls updateTPS(nil)")
+    func serverDidStop_clearsLastPrefillTPS() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        #expect(controller.lastPrefillTPS != nil)
+        controller.serverDidStop()
+        #expect(controller.lastPrefillTPS == nil)
+        if case .some(let tps) = view.lastTPSValue {
+            #expect(tps == nil)
+        } else {
+            Issue.record("updateTPS was never called")
+        }
+    }
+
+    @Test("Failed status clears lastPrefillTPS")
+    func update_failedStatus_clearsLastPrefillTPS() {
+        let view = MockStatusBarView()
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        #expect(controller.lastPrefillTPS != nil)
+        state.serverCrashed()
+        controller.update(state: state)
+        #expect(controller.lastPrefillTPS == nil)
     }
 
     // MARK: - Helpers

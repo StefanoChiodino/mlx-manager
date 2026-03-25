@@ -25,6 +25,7 @@ public protocol StatusBarViewProtocol: AnyObject {
     func closeHistoryView()
     func showLogView(lines: [(String, LogLineKind)])
     func updateLogLine(_ line: String?)
+    func updateTPS(_ tps: Double?)
 }
 
 /// Manages the menu bar icon state and menu, driven by ServerState.
@@ -37,6 +38,7 @@ public final class StatusBarController {
     private var currentSettings: AppSettings
     private var installingEnvironment = false
     private var lastDisplayState: StatusBarDisplayState = .offline
+    public private(set) var lastPrefillTPS: Double? = nil
     private var runningServer: DiscoveredServer?
 
     private var isServerRunning: Bool {
@@ -86,16 +88,24 @@ public final class StatusBarController {
         runningServer = nil
         lastDisplayState = .offline
         view.updateState(.offline)
+        lastPrefillTPS = nil
+        view.updateTPS(nil)
         rebuildMenu(statusText: "Server: Offline")
     }
 
     /// Update the icon and status text based on current ServerState.
     public func update(state: ServerState) {
+        if let record = state.completedRequest, let tps = record.prefillTPS {
+            lastPrefillTPS = tps
+            view.updateTPS(tps)
+        }
         switch state.status {
         case .offline:
             runningServer = nil
             lastDisplayState = .offline
             view.updateState(.offline)
+            lastPrefillTPS = nil
+            view.updateTPS(nil)
             rebuildMenu(statusText: "Server: Offline")
         case .idle:
             lastDisplayState = .idle
@@ -121,6 +131,8 @@ public final class StatusBarController {
         case .failed:
             lastDisplayState = .failed
             view.updateState(.failed)
+            lastPrefillTPS = nil
+            view.updateTPS(nil)
             rebuildMenu(statusText: "Server: Crashed")
         }
     }

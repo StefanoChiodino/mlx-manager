@@ -283,4 +283,8 @@ final class StatusBarView: StatusBarViewProtocol {
             }
         }
     }
+
+    func updateTPS(_ tps: Double?) {
+        // Task 7 will wire display logic here
+    }
 }
