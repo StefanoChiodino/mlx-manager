@@ -140,17 +140,24 @@ final class StatusBarView: StatusBarViewProtocol {
     private let statusItem: NSStatusItem
     private let arcView: ArcProgressView
     private let logLabel: NSTextField
+    private let tpsLabel: NSTextField
     private var menuItemActions: [Int: () -> Void] = [:]
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         arcView = ArcProgressView()
         logLabel = NSTextField(labelWithString: "")
+        tpsLabel = NSTextField(labelWithString: "")
 
         logLabel.font = NSFont.menuBarFont(ofSize: 0)
         logLabel.textColor = NSColor.labelColor
         logLabel.lineBreakMode = .byClipping
         logLabel.isHidden = true
+
+        tpsLabel.font = NSFont.menuBarFont(ofSize: 0)
+        tpsLabel.textColor = NSColor.labelColor
+        tpsLabel.lineBreakMode = .byClipping
+        tpsLabel.isHidden = true
 
         if let button = statusItem.button {
             button.title = ""
@@ -158,14 +165,18 @@ final class StatusBarView: StatusBarViewProtocol {
 
             arcView.translatesAutoresizingMaskIntoConstraints = false
             logLabel.translatesAutoresizingMaskIntoConstraints = false
+            tpsLabel.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(arcView)
             button.addSubview(logLabel)
+            button.addSubview(tpsLabel)
 
             let pad = Self.pad
             NSLayoutConstraint.activate([
                 logLabel.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: pad),
                 logLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-                arcView.leadingAnchor.constraint(equalTo: logLabel.trailingAnchor, constant: pad),
+                tpsLabel.leadingAnchor.constraint(equalTo: logLabel.trailingAnchor, constant: pad),
+                tpsLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+                arcView.leadingAnchor.constraint(equalTo: tpsLabel.trailingAnchor, constant: pad),
                 arcView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -pad),
                 arcView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
             ])
@@ -213,6 +224,28 @@ final class StatusBarView: StatusBarViewProtocol {
 
     @objc private func menuItemClicked(_ sender: NSMenuItem) {
         menuItemActions[sender.tag]?()
+    }
+
+    private func recalculateWidth() {
+        let pad = Self.pad
+        let arcWidth = arcView.intrinsicContentSize.width
+        let font = logLabel.font ?? NSFont.menuBarFont(ofSize: 0)
+        var total: CGFloat = pad + arcWidth + pad
+
+        if !logLabel.isHidden {
+            let w = (logLabel.stringValue as NSString).size(withAttributes: [.font: font]).width
+            total += w + pad
+        }
+        if !tpsLabel.isHidden {
+            let w = (tpsLabel.stringValue as NSString).size(withAttributes: [.font: font]).width
+            total += w + pad
+        }
+
+        if logLabel.isHidden && tpsLabel.isHidden {
+            statusItem.length = NSStatusItem.variableLength
+        } else {
+            statusItem.length = total
+        }
     }
 
     func showRAMGraphView(samples: [RAMSample]) {
@@ -268,23 +301,28 @@ final class StatusBarView: StatusBarViewProtocol {
     func updateLogLine(_ line: String?) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            let pad = Self.pad
             if let line {
                 self.logLabel.stringValue = line
                 self.logLabel.isHidden = false
-                let arcWidth = self.arcView.intrinsicContentSize.width
-                let font = self.logLabel.font ?? NSFont.menuBarFont(ofSize: 0)
-                let textWidth = (line as NSString).size(withAttributes: [.font: font]).width
-                self.statusItem.length = pad + arcWidth + pad + textWidth + pad
             } else {
                 self.logLabel.stringValue = ""
                 self.logLabel.isHidden = true
-                self.statusItem.length = NSStatusItem.variableLength
             }
+            self.recalculateWidth()
         }
     }
 
     func updateTPS(_ tps: Double?) {
-        // Task 7 will wire display logic here
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let tps {
+                self.tpsLabel.stringValue = "\(Int(tps.rounded())) tok/s"
+                self.tpsLabel.isHidden = false
+            } else {
+                self.tpsLabel.stringValue = ""
+                self.tpsLabel.isHidden = true
+            }
+            self.recalculateWidth()
+        }
     }
 }
