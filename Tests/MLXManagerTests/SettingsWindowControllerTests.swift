@@ -6,6 +6,70 @@ import XCTest
 @MainActor
 final class SettingsWindowControllerTests: XCTestCase {
 
+    func test_lmPresetDisplaysContextInThousandsAndCacheInGB() throws {
+        let controller = SettingsWindowController(
+            presets: [
+                ServerConfig(
+                    name: "4-bit 40k",
+                    model: "mlx-community/test-model",
+                    maxTokens: 40 * 1024,
+                    promptCacheSize: 7,
+                    promptCacheBytes: 10 * 1024 * 1024 * 1024,
+                    pythonPath: "/usr/bin/python3"
+                )
+            ],
+            settings: AppSettings()
+        )
+        let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
+        let tokensField = try XCTUnwrap(reflectedValue(named: "detailMaxTokens", in: controller, as: NSTextField.self))
+        let cacheField = try XCTUnwrap(reflectedValue(named: "detailCacheBytes", in: controller, as: NSTextField.self))
+
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        controller.tableViewSelectionDidChange(
+            Notification(name: NSTableView.selectionDidChangeNotification, object: table)
+        )
+
+        XCTAssertEqual(tokensField.stringValue, "40")
+        XCTAssertEqual(cacheField.stringValue, "10")
+    }
+
+    func test_close_appliesPendingLMUnitConvertedEdits() throws {
+        let controller = SettingsWindowController(
+            presets: [
+                ServerConfig(
+                    name: "4-bit 40k",
+                    model: "mlx-community/test-model",
+                    maxTokens: 40 * 1024,
+                    promptCacheSize: 7,
+                    promptCacheBytes: 10 * 1024 * 1024 * 1024,
+                    pythonPath: "/usr/bin/python3"
+                )
+            ],
+            settings: AppSettings()
+        )
+        let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
+        let tokensField = try XCTUnwrap(reflectedValue(named: "detailMaxTokens", in: controller, as: NSTextField.self))
+        let cacheField = try XCTUnwrap(reflectedValue(named: "detailCacheBytes", in: controller, as: NSTextField.self))
+        var dismissedPresets: [ServerConfig] = []
+        controller.onDismiss = { presets, _, cancelled in
+            XCTAssertFalse(cancelled)
+            dismissedPresets = presets
+        }
+
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        controller.tableViewSelectionDidChange(
+            Notification(name: NSTableView.selectionDidChangeNotification, object: table)
+        )
+        tokensField.stringValue = "80"
+        cacheField.stringValue = "12"
+
+        controller.perform(NSSelectorFromString("closeTapped"))
+
+        XCTAssertEqual(dismissedPresets.first?.maxTokens, 80 * 1024)
+        XCTAssertEqual(dismissedPresets.first?.promptCacheBytes, 12 * 1024 * 1024 * 1024)
+        XCTAssertEqual(dismissedPresets.first?.promptCacheSize, 7)
+    }
+
     func test_close_appliesPendingServerPortFieldEdit() throws {
         let controller = SettingsWindowController(
             presets: [ServerConfig.fixture()],

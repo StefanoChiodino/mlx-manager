@@ -2,6 +2,8 @@ import AppKit
 import MLXManager
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+    private static let displayedTokenUnit = 1024
+    private static let displayedCacheBytesUnit = 1024 * 1024 * 1024
 
     var onChange: (([ServerConfig], AppSettings) -> Void)?
     var onDismiss: ((_ presets: [ServerConfig], _ settings: AppSettings, _ cancelled: Bool) -> Void)?
@@ -209,10 +211,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             let lbl = NSTextField(labelWithString: labelText)
             lbl.alignment = .right
             lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            field.setContentHuggingPriority(.defaultLow, for: .horizontal)
             let row = NSStackView(views: [lbl, field])
             row.orientation = .horizontal
             row.spacing = 8
             row.alignment = .centerY
+            row.setContentHuggingPriority(.defaultLow, for: .horizontal)
             return row
         }
 
@@ -358,10 +362,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let p = draftPresets[row]
         detailName.stringValue         = p.name
         detailModel.stringValue        = p.model
-        detailMaxTokens.stringValue    = String(p.maxTokens)
+        detailMaxTokens.stringValue    = displayValue(
+            rawValue: p.maxTokens,
+            unit: Self.displayedTokenUnit
+        )
         detailPrefill.stringValue      = String(p.prefillStepSize)
         detailCacheSize.stringValue    = String(p.promptCacheSize)
-        detailCacheBytes.stringValue   = String(p.promptCacheBytes)
+        detailCacheBytes.stringValue   = displayValue(
+            rawValue: p.promptCacheBytes,
+            unit: Self.displayedCacheBytesUnit
+        )
         detailExtraArgs.stringValue    = p.extraArgs.joined(separator: " ")
         detailTrustRemote.state        = p.trustRemoteCode ? .on : .off
         detailEnableThinking.state     = p.enableThinking ? .on : .off
@@ -386,11 +396,19 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         draftPresets[row] = ServerConfig(
             name:             detailName.stringValue.isEmpty ? p.name : detailName.stringValue,
             model:            detailModel.stringValue,
-            maxTokens:        Int(detailMaxTokens.stringValue) ?? p.maxTokens,
+            maxTokens:        parsedDisplayValue(
+                detailMaxTokens.stringValue,
+                fallback: p.maxTokens,
+                unit: Self.displayedTokenUnit
+            ),
             port:             p.port,
             prefillStepSize:  Int(detailPrefill.stringValue) ?? p.prefillStepSize,
             promptCacheSize:  Int(detailCacheSize.stringValue) ?? p.promptCacheSize,
-            promptCacheBytes: Int(detailCacheBytes.stringValue) ?? p.promptCacheBytes,
+            promptCacheBytes: parsedDisplayValue(
+                detailCacheBytes.stringValue,
+                fallback: p.promptCacheBytes,
+                unit: Self.displayedCacheBytesUnit
+            ),
             trustRemoteCode:  detailTrustRemote.state == .on,
             enableThinking:   detailEnableThinking.state == .on,
             extraArgs:        detailExtraArgs.stringValue
@@ -443,16 +461,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             let lbl = NSTextField(labelWithString: labelText)
             lbl.alignment = .right
             lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            field.setContentHuggingPriority(.defaultLow, for: .horizontal)
             let r = NSStackView(views: [lbl, field])
             r.orientation = .horizontal
             r.spacing = 8
             r.alignment = .centerY
+            r.setContentHuggingPriority(.defaultLow, for: .horizontal)
             return r
         }
         let stack = NSStackView(views: [
-            row("Context:", detailMaxTokens),
-            row("Cache Size:", detailCacheSize),
-            row("Cache Bytes:", detailCacheBytes),
+            row("Context (K):", detailMaxTokens),
+            row("Cache (GB):", detailCacheBytes),
             row("", detailEnableThinking),
         ])
         stack.orientation = .vertical
@@ -466,10 +485,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             let lbl = NSTextField(labelWithString: labelText)
             lbl.alignment = .right
             lbl.widthAnchor.constraint(equalToConstant: 90).isActive = true
+            field.setContentHuggingPriority(.defaultLow, for: .horizontal)
             let r = NSStackView(views: [lbl, field])
             r.orientation = .horizontal
             r.spacing = 8
             r.alignment = .centerY
+            r.setContentHuggingPriority(.defaultLow, for: .horizontal)
             return r
         }
         let stack = NSStackView(views: [
@@ -865,6 +886,31 @@ private extension SettingsWindowController {
         draftSettings.pythonPathOverride = pythonPathOverrideField.stringValue
         draftSettings.progressCompletionThreshold = Int(completionThresholdField.stringValue) ?? 99
         applyDetail()
+    }
+
+    func displayValue(rawValue: Int, unit: Int) -> String {
+        guard unit > 0 else { return String(rawValue) }
+        let wholeUnits = rawValue / unit
+        if rawValue % unit == 0 {
+            return String(wholeUnits)
+        }
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 3
+        return formatter.string(from: NSNumber(value: Double(rawValue) / Double(unit)))
+            ?? String(wholeUnits)
+    }
+
+    func parsedDisplayValue(_ value: String, fallback: Int, unit: Int) -> Int {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return fallback }
+        if trimmed == displayValue(rawValue: fallback, unit: unit) {
+            return fallback
+        }
+        guard let parsed = Double(trimmed) else { return fallback }
+        return Int((parsed * Double(unit)).rounded())
     }
 }
 
