@@ -96,15 +96,17 @@ private(set) var lastPrefillTPS: Double?
 
 **Toggling the setting off** does NOT clear `lastPrefillTPS` — the setting gates display only.
 
-**Display — where it happens:** The prepend is performed inside `AppDelegate.onLogEvent` (the same site that already calls `statusBarController.updateLogLine(_:)`), not inside `StatusBarController.update(state:)`. `AppDelegate` reads `statusBarController.lastPrefillTPS` and `settings.showPrefillTPS` when building the string passed to `updateLogLine(_:)`.
+**Display — dedicated `tpsLabel`:** `StatusBarView` gains a second `NSTextField` (`tpsLabel`) positioned between `logLabel` and `arcView`. Layout left-to-right: `[logLabel] [tpsLabel] [arcView]`. Each label is shown/hidden independently — no string concatenation, no shared state.
 
-Format: when `showPrefillTPS == true` and `lastPrefillTPS != nil`:
+`StatusBarViewProtocol` gains a new method:
 
-- If log line also shown: `"\(Int(tps.rounded())) tok/s  \(logLine)"`
-- If only TPS shown: `"\(Int(tps.rounded())) tok/s"`
-- Values below 1.0 tok/s display as `"0 tok/s"` (standard rounding; no special casing needed)
+```swift
+func updateTPS(_ tps: Double?)
+```
 
-This requires no new methods on `StatusBarViewProtocol`.
+`StatusBarController` calls `view.updateTPS(lastPrefillTPS)` whenever `lastPrefillTPS` changes (on qualifying record, on clear). `StatusBarView.updateTPS(_:)` sets `tpsLabel.stringValue = "\(Int(tps.rounded())) tok/s"` and shows/hides `tpsLabel` accordingly.
+
+Format: `"\(Int(tps.rounded())) tok/s"`. Values below 1.0 display as `"0 tok/s"` (standard rounding; no special casing).
 
 ## Settings
 
@@ -123,7 +125,7 @@ General tab gains a checkbox: **"Show prefill speed (tok/s)"**, positioned after
 
 - `RequestRecord.startedAt` / `completedAt` / `tokens` / `duration` — unchanged
 - Existing request history chart — unchanged
-- Status bar layout for users with `showPrefillTPS = false` — unchanged
+- Status bar layout for users with `showPrefillTPS = false` — `tpsLabel` is always hidden, layout identical to today
 
 ## Testing Order
 
