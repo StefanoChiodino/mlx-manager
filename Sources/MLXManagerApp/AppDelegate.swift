@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.logLines.append((line, kind))
             if self.logLines.count > 10_000 { self.logLines.removeFirst() }
             if self.settings.showLastLogLine {
-                self.statusBarController.updateLogLine(LogLineStripper.strip(line, event: nil))
+                self.statusBarController.updateLogLine(LogLineStripper.strip(line, event: event))
             }
         }
 
