@@ -6,6 +6,37 @@ import XCTest
 @MainActor
 final class SettingsWindowControllerTests: XCTestCase {
 
+    private func tempURL() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".yaml")
+    }
+
+    func test_lmPresetDisplaysSessionCount() throws {
+        let controller = SettingsWindowController(
+            presets: [
+                ServerConfig(
+                    name: "4-bit 4k",
+                    model: "mlx-community/test-model",
+                    maxTokens: 4096,
+                    promptCacheSize: 3,
+                    pythonPath: "/usr/bin/python3"
+                )
+            ],
+            settings: AppSettings(),
+            saveURL: tempURL()
+        )
+        let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
+        let cacheSizeField = try XCTUnwrap(reflectedValue(named: "detailCacheSize", in: controller, as: NSTextField.self))
+
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        controller.tableViewSelectionDidChange(
+            Notification(name: NSTableView.selectionDidChangeNotification, object: table)
+        )
+
+        XCTAssertEqual(cacheSizeField.stringValue, "3")
+        XCTAssertTrue(cacheSizeField.isDescendant(of: controller.window!.contentView!),
+                      "Sessions field must be visible in the form")
+    }
+
     func test_lmPresetDisplaysContextInThousandsAndCacheInGB() throws {
         let controller = SettingsWindowController(
             presets: [
@@ -92,8 +123,7 @@ final class SettingsWindowControllerTests: XCTestCase {
     }
 
     func test_close_persistsPresetEditsToDisk() throws {
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString + ".yaml")
+        let saveURL = tempURL()
         let controller = SettingsWindowController(
             presets: [
                 ServerConfig(
@@ -104,7 +134,7 @@ final class SettingsWindowControllerTests: XCTestCase {
                 )
             ],
             settings: AppSettings(),
-            saveURL: tempURL
+            saveURL: saveURL
         )
         let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
         let modelField = try XCTUnwrap(reflectedValue(named: "detailModel", in: controller, as: NSTextField.self))
@@ -117,7 +147,7 @@ final class SettingsWindowControllerTests: XCTestCase {
 
         controller.perform(NSSelectorFromString("closeTapped"))
 
-        let saved = try UserPresetStore.load(from: tempURL)
+        let saved = try UserPresetStore.load(from: saveURL)
         XCTAssertEqual(saved.first?.model, "mlx-community/new-model")
     }
 

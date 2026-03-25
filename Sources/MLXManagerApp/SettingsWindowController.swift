@@ -477,6 +477,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let stack = NSStackView(views: [
             row("Context (K):", detailMaxTokens),
             row("Cache (GB):", detailCacheBytes),
+            row("Sessions:", detailCacheSize),
             row("", detailEnableThinking),
         ])
         stack.orientation = .vertical
@@ -633,11 +634,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = completionThresholdField
 
         grid.column(at: 0).xPlacement = .trailing
+        grid.column(at: 1).xPlacement = .fill
         grid.rowSpacing = 8
 
-        serverPortField.widthAnchor.constraint(equalToConstant: 70).isActive = true
-        managedGatewayPortField.widthAnchor.constraint(equalToConstant: 70).isActive = true
-        completionThresholdField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+        serverPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        managedGatewayPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        completionThresholdField.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        pythonPathOverrideField.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
 
         let container = NSView()
         container.addSubview(grid)
@@ -649,7 +652,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         NSLayoutConstraint.activate([
             grid.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
             grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            grid.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -16),
+            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
 
             networkNote.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
             networkNote.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
