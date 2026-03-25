@@ -28,7 +28,7 @@ public enum LogParser {
         pattern: #"Prompt processing progress:\s*(\d+)/(\d+)"#
     )
     private static let kvCachesRE = try! NSRegularExpression(
-        pattern: #"KV Caches:\s*\d+\s+seq,\s*([\d.]+)\s+GB,.*?(\d+)\s+tokens"#
+        pattern: #"KV Caches:.*?([\d.]+)\s+GB,.*?(\d+)\s+tokens"#
     )
     private static let httpCompletionRE = try! NSRegularExpression(
         pattern: #"POST /v1/chat/completions HTTP/1\.1" 200"#

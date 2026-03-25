@@ -67,6 +67,44 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(tokens, 0)
     }
 
+    // MARK: - KV Caches — new format (no seq count)
+
+    /// New format: "KV Caches: ... X.XX GB, latest user cache N tokens"
+    func test_parse_kvCachesNewFormat_returnsGpuAndTokens() {
+        let line = "KV Caches: ... 1.54 GB, latest user cache 9826 tokens"
+        let result = LogParser.parse(line: line)
+        guard case .kvCaches(let gpuGB, let tokens) = result else {
+            XCTFail("Expected .kvCaches, got \(String(describing: result))")
+            return
+        }
+        XCTAssertEqual(gpuGB, 1.54, accuracy: 0.001)
+        XCTAssertEqual(tokens, 9826)
+    }
+
+    /// New format: zero values
+    func test_parse_kvCachesNewFormatZero_returnsZeroValues() {
+        let line = "KV Caches: ... 0.00 GB, latest user cache 0 tokens"
+        let result = LogParser.parse(line: line)
+        guard case .kvCaches(let gpuGB, let tokens) = result else {
+            XCTFail("Expected .kvCaches, got \(String(describing: result))")
+            return
+        }
+        XCTAssertEqual(gpuGB, 0.0, accuracy: 0.001)
+        XCTAssertEqual(tokens, 0)
+    }
+
+    /// Old format regression: "KV Caches: N seq, X.XX GB, N tokens" must still parse
+    func test_parse_kvCachesOldFormat_regression() {
+        let line = "KV Caches: 2 seq, 1.54 GB, 4096 tokens"
+        let result = LogParser.parse(line: line)
+        guard case .kvCaches(let gpuGB, let tokens) = result else {
+            XCTFail("Expected .kvCaches, got \(String(describing: result))")
+            return
+        }
+        XCTAssertEqual(gpuGB, 1.54, accuracy: 0.001)
+        XCTAssertEqual(tokens, 4096)
+    }
+
     /// Spec: Non-KV line → not a kvCaches event
     func test_parse_progressLine_returnsNilForKvParser() {
         let line = "2026-03-18 23:33:38,553 - INFO - Prompt processing progress: 4096/41061"
