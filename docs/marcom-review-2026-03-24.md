@@ -25,14 +25,14 @@ Current user-reported pain points:
 | F1 | P1 | Open | Preset management | Post-install preset updates can corrupt working configs |
 | F2 | P2 | Partial | Environment bootstrap | Bootstrap now checks missing backends, but still installs only one per launch |
 | F3 | P1 | Fixed | Request history | Idle HTTP completions no longer create fake request records |
-| F4 | P2 | Fixed | Status/UI accuracy | Default threshold no longer reports idle before MLX is done |
+| F4 | P2 | Fixed | Status/UI accuracy | Default threshold changed to 0, waits for real completion signal |
 | F5 | P2 | Closed | Log/history state | Pre-refactor duplicate replay path appears removed |
 
 ---
 
 ## F1 — P1 — Post-install preset updates can corrupt working configs
 
-Status: Fixed
+Status: Open
 
 Files:
 
@@ -138,7 +138,7 @@ This makes `Request History` untrustworthy. It also muddies refactor work becaus
 
 ## F4 — P2 — Default threshold reports idle before MLX is actually done
 
-Status: Open
+Status: Fixed
 
 Files:
 

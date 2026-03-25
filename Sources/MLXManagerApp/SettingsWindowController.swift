@@ -600,22 +600,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let grid = NSGridView(numberOfColumns: 2, rows: 9)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
-        grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 0).contentView = ramGraphCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = ramGraphCheckbox
+        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 0, length: 1))
 
         grid.cell(atColumnIndex: 0, rowIndex: 1).contentView =
             NSTextField(labelWithString: "Poll interval:")
         grid.cell(atColumnIndex: 1, rowIndex: 1).contentView = ramPollPopup
 
-        grid.cell(atColumnIndex: 0, rowIndex: 2).contentView = NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = startAtLoginCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 2).contentView = startAtLoginCheckbox
+        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 2, length: 1))
 
-        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView = NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = managedGatewayCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView = managedGatewayCheckbox
+        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 3, length: 1))
 
-        grid.cell(atColumnIndex: 0, rowIndex: 4).contentView =
-            NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = showLastLogLineCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 4).contentView = showLastLogLineCheckbox
+        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 4, length: 1))
 
         grid.cell(atColumnIndex: 0, rowIndex: 5).contentView =
             NSTextField(labelWithString: "Server port:")

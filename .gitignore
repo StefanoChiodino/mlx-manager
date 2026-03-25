@@ -7,6 +7,8 @@ DerivedData/
 .DS_Store
 .superpowers/
 build/.worktrees/
+build/MLXManager.app/
+Logs/
 # Stray screenshot drops at repo root
 /*.png
 /*.jpg
