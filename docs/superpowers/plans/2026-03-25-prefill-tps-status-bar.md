@@ -633,15 +633,23 @@ In `Sources/MLXManager/StatusBarController.swift`, add to `StatusBarViewProtocol
 func updateTPS(_ tps: Double?)
 ```
 
-- [ ] **Step 2: Run all tests — verify still green**
+- [ ] **Step 2: Add `lastPrefillTPS` stub property to `StatusBarController`**
+
+The new tests reference `controller.lastPrefillTPS`. Without this property the test file won't compile at all — a compile error is not a valid RED. Add just the stub declaration (no logic yet) to `Sources/MLXManager/StatusBarController.swift` after `lastDisplayState` (line 39):
+
+```swift
+public private(set) var lastPrefillTPS: Double? = nil
+```
+
+- [ ] **Step 3: Run all tests — verify still green**
 
 ```bash
 swift test 2>&1
 ```
 
-Expected: all pass (stub compiles, no behaviour changed yet).
+Expected: all pass (stubs compile, no behaviour changed yet).
 
-- [ ] **Step 3: Write failing tests**
+- [ ] **Step 4: Write failing tests**
 
 `StatusBarControllerTests.swift` uses Swift Testing (`import Testing`, `@Suite struct`). All new tests must use `@Test func` and `#expect`/`#require` — NOT `XCTAssert`. Add inside `struct StatusBarControllerTests`:
 
@@ -725,29 +733,17 @@ func update_failedStatus_clearsLastPrefillTPS() {
 }
 ```
 
-- [ ] **Step 4: Run tests — verify RED**
+- [ ] **Step 5: Run tests — verify RED**
 
 ```bash
 swift test --filter StatusBarControllerTests 2>&1
 ```
 
-Expected: new TPS tests FAIL at runtime — `lastPrefillTPS` property does not exist yet on `StatusBarController`.
+Expected: new TPS tests FAIL at runtime — `lastPrefillTPS` is `nil` (stub has no update logic yet), assertions fail.
 
-- [ ] **Step 5: Add `lastPrefillTPS` and logic to `StatusBarController`**
+- [ ] **Step 6: Add update logic to `StatusBarController`**
 
-In `Sources/MLXManager/StatusBarController.swift`, add to the protocol (after `updateLogLine`, line 27):
-
-```swift
-func updateTPS(_ tps: Double?)
-```
-
-- [ ] **Step 6: Add `lastPrefillTPS` and logic to `StatusBarController`**
-
-Add private(set) property after `lastDisplayState` (line 39):
-
-```swift
-public private(set) var lastPrefillTPS: Double? = nil
-```
+The stub property was already added in Step 2. Now add the behaviour. Do NOT re-declare `lastPrefillTPS` — it already exists.
 
 Update `update(state:)` — add at the **start** of the method, before the switch (line 93):
 
