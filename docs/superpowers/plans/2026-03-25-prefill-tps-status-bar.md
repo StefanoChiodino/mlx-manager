@@ -35,6 +35,7 @@ This is a **refactor step only**. No new behaviour. All existing tests must rema
 - Modify: `Sources/MLXManager/LogParser.swift`
 - Modify: `Sources/MLXManager/ServerCoordinator.swift:104-113`
 - Modify: `Tests/MLXManagerTests/LogParserTests.swift:165-183`
+- Modify: `Tests/MLXManagerTests/StatusBarControllerTests.swift:507,545`
 
 - [ ] **Step 1: Add `timestamp: Date` to `LogEvent.progress` with a placeholder parse site**
 
@@ -98,6 +99,13 @@ guard case .progress(let current, let total, let percentage, let timestamp) = re
 ```
 
 And add `XCTAssertNotNil(timestamp)` to those two tests.
+
+- [ ] **Step 5b: Update `StatusBarControllerTests.swift` `.progress` constructions**
+
+Two sites need `timestamp: Date()` added:
+
+- Line 507: `state.handle(.progress(current: 10, total: 100, percentage: 10.0))` → add `, timestamp: Date()`
+- Line 545 (inside `makeState`): `state.handle(.progress(current: c, total: t, percentage: ..., timestamp: Date()))`
 
 - [ ] **Step 6: Update all existing `ServerStateTests` that construct `.progress`**
 
@@ -608,55 +616,61 @@ git commit -m "feat: add showPrefillTPS setting to AppSettings"
 - Modify: `Sources/MLXManager/StatusBarController.swift`
 - Modify: `Tests/MLXManagerTests/StatusBarControllerTests.swift` (locate or create)
 
-- [ ] **Step 1: Locate existing StatusBarController tests**
+- [ ] **Step 1: Add `updateTPS` stub to `MockStatusBarView` and to the protocol**
+
+Both changes must happen together before writing tests — otherwise any test referencing `MockStatusBarView` will fail to compile.
+
+In `Tests/MLXManagerTests/StatusBarControllerTests.swift`, add to `MockStatusBarView` after `updateLogLine` (around line 46):
+
+```swift
+var lastTPSValue: Double?? = .none   // .none = never called, .some(nil) = called with nil
+func updateTPS(_ tps: Double?) { lastTPSValue = .some(tps) }
+```
+
+In `Sources/MLXManager/StatusBarController.swift`, add to `StatusBarViewProtocol` after `updateLogLine` (line 27):
+
+```swift
+func updateTPS(_ tps: Double?)
+```
+
+- [ ] **Step 2: Run all tests — verify still green**
 
 ```bash
-find /Users/stefano/repos/mlx-manager/Tests -name "StatusBarControllerTests.swift"
+swift test 2>&1
 ```
 
-- [ ] **Step 2: Write failing tests**
+Expected: all pass (stub compiles, no behaviour changed yet).
 
-Add or create test file with a `SpyStatusBarView` mock that records calls:
+- [ ] **Step 3: Write failing tests**
 
-```swift
-final class SpyStatusBarView: StatusBarViewProtocol {
-    var lastTPS: Double?? = .none   // .none = never called, .some(nil) = called with nil
-    func updateTPS(_ tps: Double?) { lastTPS = .some(tps) }
-    // stub out other protocol methods...
-    func updateState(_ state: StatusBarDisplayState) {}
-    func buildMenu(items: [StatusBarMenuItem]) {}
-    func showRAMGraphView(samples: [RAMSample]) {}
-    func closeRAMGraphView() {}
-    func showHistoryView(records: [RequestRecord]) {}
-    func closeHistoryView() {}
-    func showLogView(lines: [(String, LogLineKind)]) {}
-    func updateLogLine(_ line: String?) {}
-}
-```
-
-Tests:
+`StatusBarControllerTests.swift` uses Swift Testing (`import Testing`, `@Suite struct`). All new tests must use `@Test func` and `#expect`/`#require` — NOT `XCTAssert`. Add inside `struct StatusBarControllerTests`:
 
 ```swift
-func test_update_qualifyingRecord_updatesLastPrefillTPS() {
-    let spy = SpyStatusBarView()
-    let controller = StatusBarController(view: spy, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+// MARK: - Prefill TPS
+
+@Test("Qualifying record updates lastPrefillTPS and calls updateTPS")
+func update_qualifyingRecord_updatesLastPrefillTPS() {
+    let view = MockStatusBarView()
+    let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
     var state = ServerState()
     state.serverStarted()
-    // Inject a completed record with prefillTPS
-    // We need to drive ServerState through handle() — use two progress lines
     let t1 = Date()
     state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
     state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
     controller.update(state: state)
-    XCTAssertNotNil(controller.lastPrefillTPS)
-    XCTAssertEqual(spy.lastTPS!, 2000.0, accuracy: 1.0)
+    #expect(controller.lastPrefillTPS != nil)
+    if case .some(let tps) = view.lastTPSValue {
+        #expect(abs((tps ?? 0) - 2000.0) < 1.0)
+    } else {
+        Issue.record("updateTPS was never called")
+    }
 }
 
-func test_update_nonQualifyingRecord_doesNotChangePrefillTPS() {
-    let spy = SpyStatusBarView()
-    let controller = StatusBarController(view: spy, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
-    // First: qualifying
+@Test("Non-qualifying record leaves lastPrefillTPS unchanged")
+func update_nonQualifyingRecord_doesNotChangePrefillTPS() {
+    let view = MockStatusBarView()
+    let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
     var state = ServerState()
     state.serverStarted()
     let t1 = Date()
@@ -666,17 +680,16 @@ func test_update_nonQualifyingRecord_doesNotChangePrefillTPS() {
     controller.update(state: state)
     let firstTPS = controller.lastPrefillTPS
     state.clearCompletedRequest()
-    // Second: non-qualifying (single progress line)
     state.handle(.progress(current: 100, total: 200, percentage: 50.0, timestamp: Date()))
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 100))
     controller.update(state: state)
-    XCTAssertEqual(controller.lastPrefillTPS, firstTPS)
+    #expect(controller.lastPrefillTPS == firstTPS)
 }
 
-func test_update_offlineStatus_clearsLastPrefillTPS() {
-    let spy = SpyStatusBarView()
-    let controller = StatusBarController(view: spy, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
-    // Set a value first
+@Test("serverDidStop clears lastPrefillTPS and calls updateTPS(nil)")
+func serverDidStop_clearsLastPrefillTPS() {
+    let view = MockStatusBarView()
+    let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
     var state = ServerState()
     state.serverStarted()
     let t1 = Date()
@@ -684,16 +697,20 @@ func test_update_offlineStatus_clearsLastPrefillTPS() {
     state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
     controller.update(state: state)
-    XCTAssertNotNil(controller.lastPrefillTPS)
-    // Now stop
+    #expect(controller.lastPrefillTPS != nil)
     controller.serverDidStop()
-    XCTAssertNil(controller.lastPrefillTPS)
-    XCTAssertEqual(spy.lastTPS!, nil)   // updateTPS(nil) was called
+    #expect(controller.lastPrefillTPS == nil)
+    if case .some(let tps) = view.lastTPSValue {
+        #expect(tps == nil)
+    } else {
+        Issue.record("updateTPS was never called")
+    }
 }
 
-func test_update_failedStatus_clearsLastPrefillTPS() {
-    let spy = SpyStatusBarView()
-    let controller = StatusBarController(view: spy, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
+@Test("Failed status clears lastPrefillTPS")
+func update_failedStatus_clearsLastPrefillTPS() {
+    let view = MockStatusBarView()
+    let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: AppSettings(), fileExists: { _ in true })
     var state = ServerState()
     state.serverStarted()
     let t1 = Date()
@@ -701,33 +718,22 @@ func test_update_failedStatus_clearsLastPrefillTPS() {
     state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
     controller.update(state: state)
-    XCTAssertNotNil(controller.lastPrefillTPS)
+    #expect(controller.lastPrefillTPS != nil)
     state.serverCrashed()
     controller.update(state: state)
-    XCTAssertNil(controller.lastPrefillTPS)
+    #expect(controller.lastPrefillTPS == nil)
 }
 ```
 
-- [ ] **Step 3: Run tests — verify RED**
+- [ ] **Step 4: Run tests — verify RED**
 
 ```bash
 swift test --filter StatusBarControllerTests 2>&1
 ```
 
-Expected: FAIL — `updateTPS` not in protocol, `lastPrefillTPS` not on controller.
+Expected: new TPS tests FAIL at runtime — `lastPrefillTPS` property does not exist yet on `StatusBarController`.
 
-- [ ] **Step 4: Add `updateTPS` stub to `MockStatusBarView`**
-
-The existing `MockStatusBarView` at `Tests/MLXManagerTests/StatusBarControllerTests.swift:8` implements `StatusBarViewProtocol`. Adding `updateTPS` to the protocol will break it unless we add a stub first. Add after `updateLogLine` in `MockStatusBarView`:
-
-```swift
-var lastTPSValue: Double?? = .none   // .none = never called, .some(nil) = called with nil
-func updateTPS(_ tps: Double?) { lastTPSValue = .some(tps) }
-```
-
-Also delete the `SpyStatusBarView` you added in Step 2 and replace all `spy.lastTPS` references in the new tests with `view.lastTPSValue`.
-
-- [ ] **Step 5: Add `updateTPS` to `StatusBarViewProtocol`**
+- [ ] **Step 5: Add `lastPrefillTPS` and logic to `StatusBarController`**
 
 In `Sources/MLXManager/StatusBarController.swift`, add to the protocol (after `updateLogLine`, line 27):
 
@@ -958,17 +964,19 @@ And populate the field in `loadSettings()` (or wherever `showLastLogLine` is loa
 showPrefillTPSCheckbox.state = settings.showPrefillTPS ? .on : .off
 ```
 
-- [ ] **Step 2: Write failing test for `applySettings` toggle**
+- [ ] **Step 2: Write failing tests for `applySettings` toggle**
 
-In `Tests/MLXManagerTests/StatusBarControllerTests.swift`, add:
+In `Tests/MLXManagerTests/StatusBarControllerTests.swift`, add inside `struct StatusBarControllerTests` (uses Swift Testing — `@Test func`, `#expect`):
 
 ```swift
-func test_applySettings_showPrefillTPSEnabled_callsUpdateTPSWithCachedValue() {
+// MARK: - applySettings TPS wiring
+
+@Test("applySettings enabling showPrefillTPS calls updateTPS with cached value")
+func applySettings_enableShowPrefillTPS_callsUpdateTPSWithCachedValue() {
     let view = MockStatusBarView()
     var settings = AppSettings()
     settings.showPrefillTPS = false
     let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings, fileExists: { _ in true })
-    // Establish a cached TPS value via a qualifying request
     var state = ServerState()
     state.serverStarted()
     let t1 = Date()
@@ -977,15 +985,18 @@ func test_applySettings_showPrefillTPSEnabled_callsUpdateTPSWithCachedValue() {
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
     controller.update(state: state)
     view.lastTPSValue = .none   // reset spy
-    // Now enable the setting — should immediately call updateTPS with the cached value
     var newSettings = settings
     newSettings.showPrefillTPS = true
     controller.applySettings(newSettings)
-    XCTAssertNotNil(view.lastTPSValue)
-    XCTAssertNotNil(view.lastTPSValue!)   // called with non-nil
+    if case .some(let tps) = view.lastTPSValue {
+        #expect(tps != nil)
+    } else {
+        Issue.record("updateTPS was never called")
+    }
 }
 
-func test_applySettings_showPrefillTPSDisabled_callsUpdateTPSWithNil() {
+@Test("applySettings disabling showPrefillTPS calls updateTPS(nil)")
+func applySettings_disableShowPrefillTPS_callsUpdateTPSWithNil() {
     let view = MockStatusBarView()
     var settings = AppSettings()
     settings.showPrefillTPS = true
@@ -998,12 +1009,14 @@ func test_applySettings_showPrefillTPSDisabled_callsUpdateTPSWithNil() {
     state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
     controller.update(state: state)
     view.lastTPSValue = .none   // reset spy
-    // Disable the setting — should call updateTPS(nil)
     var newSettings = settings
     newSettings.showPrefillTPS = false
     controller.applySettings(newSettings)
-    XCTAssertNotNil(view.lastTPSValue)
-    XCTAssertNil(view.lastTPSValue!)   // called with nil
+    if case .some(let tps) = view.lastTPSValue {
+        #expect(tps == nil)
+    } else {
+        Issue.record("updateTPS was never called")
+    }
 }
 ```
 
