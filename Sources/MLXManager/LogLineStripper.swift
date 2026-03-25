@@ -1,18 +1,27 @@
 import Foundation
 
-/// Strips known log prefixes and truncates lines for display in the menu bar.
+/// Strips known log prefixes and formats lines for display in the menu bar.
+///
+/// - For `.progress` and `.kvCaches` events, returns a compact formatted string.
+/// - For all other events (including `nil`), strips the timestamp prefix and truncates to 70 characters.
 public enum LogLineStripper {
 
     private static let maxLength = 70
 
-    /// Strip known prefixes from `line`, then truncate to 70 Swift Characters.
-    /// Rules applied in order (first match wins):
-    ///   1. `YYYY-MM-DD HH:MM:SS,mmm - INFO - ` (mlx_lm.server format)
-    ///   2. `INFO: ` followed by one or more spaces (uvicorn/vision format)
-    /// Lines matching no rule are returned as-is (before truncation).
-    public static func strip(_ line: String) -> String {
-        let stripped = stripped(line)
-        return truncated(stripped)
+    /// Returns a compact string suitable for display in the status bar.
+    ///
+    /// - Parameters:
+    ///   - line: The raw log line.
+    ///   - event: The parsed event for this line, if any.
+    public static func strip(_ line: String, event: LogEvent?) -> String {
+        switch event {
+        case .progress(let current, let total, _):
+            return "\(current)/\(total)"
+        case .kvCaches(let gpuGB, let tokens):
+            return "\(String(format: "%.2f", gpuGB)) GB · \(tokens) tok"
+        default:
+            return truncated(stripped(line))
+        }
     }
 
     private static func stripped(_ line: String) -> String {
