@@ -22,6 +22,11 @@ public protocol ProcessTerminating {
     func terminate(pid: Int32, signal: Int32)
 }
 
+/// Checks whether a PID still refers to a live process.
+public protocol ProcessLivenessChecking {
+    func isAlive(pid: Int32) -> Bool
+}
+
 /// Default implementation that calls the real kill(2).
 public struct RealProcessTerminator: ProcessTerminating {
     public init() {}
@@ -30,10 +35,23 @@ public struct RealProcessTerminator: ProcessTerminating {
     }
 }
 
+/// Default implementation backed by kill(pid, 0).
+public struct RealProcessLivenessChecker: ProcessLivenessChecking {
+    public init() {}
+
+    public func isAlive(pid: Int32) -> Bool {
+        guard pid > 0 else { return false }
+        if kill(pid, 0) == 0 { return true }
+        return errno == EPERM
+    }
+}
+
 /// Manages starting, stopping, and restarting the MLX server process.
 public final class ServerManager {
     private let launcher: ProcessLauncher
     private let processTerminator: ProcessTerminating
+    private let processLivenessChecker: ProcessLivenessChecking
+    private let adoptedProcessPollInterval: TimeInterval
     private var process: ProcessHandle?
     private var currentLaunchGeneration: Int?
     private var nextLaunchGeneration: Int = 0
@@ -41,6 +59,7 @@ public final class ServerManager {
     private var adoptedPID: Int32?
     private(set) public var adoptedPort: Int?
     private(set) public var adoptedServer: DiscoveredServer?
+    private var adoptedProcessMonitor: DispatchSourceTimer?
 
     /// Path to redirect server stderr to. Set before calling start().
     public var logPath: String?
@@ -62,10 +81,14 @@ public final class ServerManager {
 
     public init(
         launcher: ProcessLauncher,
-        processTerminator: ProcessTerminating = RealProcessTerminator()
+        processTerminator: ProcessTerminating = RealProcessTerminator(),
+        processLivenessChecker: ProcessLivenessChecking = RealProcessLivenessChecker(),
+        adoptedProcessPollInterval: TimeInterval = 0.1
     ) {
         self.launcher = launcher
         self.processTerminator = processTerminator
+        self.processLivenessChecker = processLivenessChecker
+        self.adoptedProcessPollInterval = adoptedProcessPollInterval
     }
 
     /// Start the server with the given config. Throws if already running.
@@ -97,10 +120,9 @@ public final class ServerManager {
     /// Stop the running server. No-op if not running.
     public func stop() {
         if let adopted = adoptedPID {
+            stopMonitoringAdoptedProcess()
             processTerminator.terminate(pid: adopted, signal: 15) // SIGTERM
-            adoptedPID = nil
-            adoptedPort = nil
-            adoptedServer = nil
+            clearAdoptedProcess()
         } else {
             if let launchGeneration = currentLaunchGeneration {
                 expectedExitGenerations.insert(launchGeneration)
@@ -123,6 +145,7 @@ public final class ServerManager {
         adoptedPID = pid
         adoptedPort = port
         adoptedServer = nil
+        startMonitoringAdoptedProcess(pid: pid)
     }
 
     /// Adopt an externally-started process along with recovered runtime details.
@@ -131,5 +154,41 @@ public final class ServerManager {
         adoptedPID = server.pid
         adoptedPort = server.port
         adoptedServer = server
+        startMonitoringAdoptedProcess(pid: server.pid)
+    }
+
+    private func startMonitoringAdoptedProcess(pid: Int32) {
+        stopMonitoringAdoptedProcess()
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(
+            deadline: .now() + adoptedProcessPollInterval,
+            repeating: adoptedProcessPollInterval
+        )
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            guard self.adoptedPID == pid else {
+                self.stopMonitoringAdoptedProcess()
+                return
+            }
+            guard self.processLivenessChecker.isAlive(pid: pid) == false else { return }
+
+            self.stopMonitoringAdoptedProcess()
+            self.clearAdoptedProcess()
+            self.onExit?()
+        }
+        timer.resume()
+        adoptedProcessMonitor = timer
+    }
+
+    private func stopMonitoringAdoptedProcess() {
+        adoptedProcessMonitor?.cancel()
+        adoptedProcessMonitor = nil
+    }
+
+    private func clearAdoptedProcess() {
+        adoptedPID = nil
+        adoptedPort = nil
+        adoptedServer = nil
     }
 }

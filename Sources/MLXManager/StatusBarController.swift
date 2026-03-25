@@ -206,7 +206,7 @@ public final class StatusBarController {
             // Preset items
             for (i, preset) in presets.enumerated() {
                 let idx = i
-                let envReady = fileExists(preset.pythonPath)
+                let envReady = fileExists(currentSettings.resolvedPythonPath(for: preset))
                 let title = envReady ? preset.name : "\(preset.name)  (env missing)"
                 let enabled = !isServerRunning && envReady
                 items.append(StatusBarMenuItem(

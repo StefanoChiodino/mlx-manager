@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import MLXManager
 
@@ -415,6 +416,27 @@ struct ServerManagerTests {
         #expect(manager.pid == 888)
         #expect(manager.adoptedPort == 8081)
         #expect(manager.adoptedServer == discovered)
+    }
+
+    @Test("adopted process exit clears state and fires onExit")
+    func adoptedProcessExit_clearsState_andFiresOnExit() throws {
+        let launcher = MockLauncher()
+        let manager = ServerManager(launcher: launcher)
+        var exitCalled = false
+        manager.onExit = { exitCalled = true }
+
+        try manager.adoptProcess(pid: Int32.max)
+
+        let deadline = Date().addingTimeInterval(0.2)
+        while Date() < deadline && exitCalled == false {
+            RunLoop.current.run(mode: .default, before: deadline)
+        }
+
+        #expect(exitCalled == true)
+        #expect(manager.isRunning == false)
+        #expect(manager.pid == nil)
+        #expect(manager.adoptedPort == nil)
+        #expect(manager.adoptedServer == nil)
     }
 
     // MARK: - T17: start while adopted throws alreadyRunning

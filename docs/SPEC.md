@@ -106,7 +106,7 @@ Return `nil` for: `Fetching`, `WARNING`, `resource_tracker:`, HTTP GETs, `Starti
 
 Both `mlx_lm.server` and `mlx_vlm.server` are supported as backends. `ServerArgBuilder` is used to assemble the correct command-line arguments for each backend based on the active preset's `serverType`.
 
-- **Start**: Launch with selected config preset using `config.pythonPath`
+- **Start**: Launch with the managed Python for the preset's backend, unless a global Python override is set in app settings
 - **Stop**: Terminate running process, transition to offline
 - **Restart**: Stop then start with same config
 - **Process exit**: Clean up log tailing, update state to offline
@@ -126,7 +126,7 @@ Detect running server (backend-aware via `findServer(backend:)`) via `sysctl(KER
 
 ### Config Presets
 
-Load from bundled `presets.yaml` (4 presets). Each preset must include `pythonPath`.
+Load from bundled `presets.yaml` (4 presets). `pythonPath` is optional and defaults to the managed Python for the preset's backend.
 
 User presets persisted to `~/.config/mlx-manager/presets.yaml`.
 `UserPresetStore.load()` reads user file if present, otherwise falls back to bundled presets.
@@ -159,7 +159,7 @@ Tail server log in real-time, parse via `LogParser`, emit `LogEvent` values.
 ### App Settings
 
 Persisted to `~/.config/mlx-manager/settings.json`.
-Fields: `ramGraphEnabled` (default `false`), `ramPollInterval` (default `5`, allowed: 2/5/10), `logPath`.
+Fields: `ramGraphEnabled` (default `false`), `ramPollInterval` (default `5`, allowed: 2/5/10), `logPath`, `pythonPathOverride` (optional global override).
 
 ---
 
@@ -181,7 +181,7 @@ Poll server process RSS via `proc_pidinfo` at configurable interval, emit `RAMSa
 ### Menu Structure
 
 - Preset header ("Start with:" when offline, "Switch to:" when running)
-- Preset items (disabled + "(env missing)" when `pythonPath` absent)
+- Preset items (disabled + "(env missing)" when the resolved Python path for that preset is missing)
 - Stop (only when running)
 - Show Log, Request History
 - RAM Graph (only when `ramGraphEnabled`)

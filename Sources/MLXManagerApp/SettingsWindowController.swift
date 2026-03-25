@@ -21,9 +21,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     // MARK: - Detail form fields
     private let detailName         = NSTextField()
-    private let detailPythonPath   = NSTextField()
     private let detailModel        = NSTextField()
-    private let detailPort         = NSTextField()
     private let detailMaxTokens    = NSTextField()
     private let detailPrefill      = NSTextField()
     private let detailCacheSize    = NSTextField()
@@ -57,8 +55,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let ramGraphCheckbox = NSButton(checkboxWithTitle: "Enable RAM graph", target: nil, action: nil)
     private let ramPollPopup = NSPopUpButton()
     private let startAtLoginCheckbox = NSButton(checkboxWithTitle: "Start at login", target: nil, action: nil)
+    private let managedGatewayCheckbox = NSButton(checkboxWithTitle: "Enable managed gateway (stable port + default model)", target: nil, action: nil)
     private let showLastLogLineCheckbox = NSButton(checkboxWithTitle: "Show last log line in menu bar", target: nil, action: nil)
+    private let serverPortField = NSTextField()
+    private let managedGatewayPortField = NSTextField()
     private let completionThresholdField = NSTextField()
+    private let pythonPathOverrideField = NSTextField()
 
     // MARK: - Environment installer
     private let installerOutput = NSTextView()
@@ -187,7 +189,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         // — Detail form —
         // Wire up all editable text fields
-        for f in [detailName, detailPythonPath, detailModel, detailPort, detailPrefill, detailExtraArgs,
+        for f in [detailName, detailModel, detailPrefill, detailExtraArgs,
                   detailMaxTokens, detailCacheSize, detailCacheBytes,
                   detailKvBits, detailKvGroupSize, detailMaxKvSize, detailQuantizedKvStart] {
             f.isEditable = true
@@ -218,9 +220,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let sharedTopStack = NSStackView(views: [
             formRow("Backend:", detailBackend),
             formRow("Name:", detailName),
-            formRow("Python Path:", detailPythonPath),
             formRow("Model:", detailModel),
-            formRow("Port:", detailPort),
             formRow("Prefill:", detailPrefill),
         ])
         sharedTopStack.orientation = .vertical
@@ -250,13 +250,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         envBox.title = "Set Up Environment"
         envBox.titlePosition = .atTop
 
-        let envLabel = NSTextField(string: "Default python: \(EnvironmentInstaller.pythonPath)")
-        envLabel.isEditable = false
-        envLabel.isBordered = false
-        envLabel.drawsBackground = false
-        envLabel.isSelectable = true
+        let envLabel = NSTextField(wrappingLabelWithString:
+            "Python is chosen automatically for each backend's managed environment."
+        )
         envLabel.font = NSFont.systemFont(ofSize: 11)
-        envLabel.lineBreakMode = .byTruncatingMiddle
+        envLabel.textColor = .secondaryLabelColor
 
         installButton.target = self
         installButton.action = #selector(installEnvironment)
@@ -339,7 +337,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         currentDetailRow = row
         let hasSelection = row >= 0 && row < draftPresets.count
         let textFields: [NSTextField] = [
-            detailName, detailPythonPath, detailModel, detailPort,
+            detailName, detailModel,
             detailMaxTokens, detailPrefill, detailCacheSize, detailCacheBytes, detailExtraArgs,
             detailKvBits, detailKvGroupSize, detailMaxKvSize, detailQuantizedKvStart
         ]
@@ -359,9 +357,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let p = draftPresets[row]
         detailName.stringValue         = p.name
-        detailPythonPath.stringValue   = p.pythonPath
         detailModel.stringValue        = p.model
-        detailPort.stringValue         = String(p.port)
         detailMaxTokens.stringValue    = String(p.maxTokens)
         detailPrefill.stringValue      = String(p.prefillStepSize)
         detailCacheSize.stringValue    = String(p.promptCacheSize)
@@ -391,7 +387,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             name:             detailName.stringValue.isEmpty ? p.name : detailName.stringValue,
             model:            detailModel.stringValue,
             maxTokens:        Int(detailMaxTokens.stringValue) ?? p.maxTokens,
-            port:             Int(detailPort.stringValue) ?? p.port,
+            port:             p.port,
             prefillStepSize:  Int(detailPrefill.stringValue) ?? p.prefillStepSize,
             promptCacheSize:  Int(detailCacheSize.stringValue) ?? p.promptCacheSize,
             promptCacheBytes: Int(detailCacheBytes.stringValue) ?? p.promptCacheBytes,
@@ -404,7 +400,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             kvGroupSize:      Int(detailKvGroupSize.stringValue) ?? p.kvGroupSize,
             maxKvSize:        Int(detailMaxKvSize.stringValue) ?? p.maxKvSize,
             quantizedKvStart: Int(detailQuantizedKvStart.stringValue) ?? p.quantizedKvStart,
-            pythonPath:       detailPythonPath.stringValue
+            pythonPath:       p.pythonPath
         )
         presetListTable.reloadData(forRowIndexes: IndexSet(integer: row),
                                    columnIndexes: IndexSet(integersIn: 0..<presetListTable.numberOfColumns))
@@ -417,6 +413,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         guard row >= 0, row < draftPresets.count else { return }
         let backend: ServerType = detailBackend.selectedSegment == 0 ? .mlxLM : .mlxVLM
         let p = draftPresets[row]
+        let pythonPath: String
+        if p.pythonPath == ServerConfig.defaultPythonPath(for: p.serverType) {
+            pythonPath = ServerConfig.defaultPythonPath(for: backend)
+        } else {
+            pythonPath = p.pythonPath
+        }
         draftPresets[row] = ServerConfig(
             name: p.name, model: p.model, maxTokens: p.maxTokens,
             port: p.port, prefillStepSize: p.prefillStepSize,
@@ -425,7 +427,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             extraArgs: p.extraArgs, serverType: backend,
             kvBits: p.kvBits, kvGroupSize: p.kvGroupSize,
             maxKvSize: p.maxKvSize, quantizedKvStart: p.quantizedKvStart,
-            pythonPath: p.pythonPath
+            pythonPath: pythonPath
         )
         swapBackendSpecificStack(for: backend)
         installButton.title = "Install / Reinstall \(backend == .mlxLM ? "mlx-lm" : "mlx-vlm")"
@@ -509,9 +511,33 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         startAtLoginCheckbox.target = self
         startAtLoginCheckbox.action = #selector(startAtLoginToggled)
 
+        managedGatewayCheckbox.state = draftSettings.managedGatewayEnabled ? .on : .off
+        managedGatewayCheckbox.target = self
+        managedGatewayCheckbox.action = #selector(managedGatewayToggled)
+
         showLastLogLineCheckbox.state = draftSettings.showLastLogLine ? .on : .off
         showLastLogLineCheckbox.target = self
         showLastLogLineCheckbox.action = #selector(showLastLogLineToggled)
+
+        let portFormatter = {
+            let f = NumberFormatter()
+            f.minimum = 1
+            f.maximum = 65_535
+            f.allowsFloats = false
+            return f
+        }()
+
+        serverPortField.stringValue = String(draftSettings.serverPort)
+        serverPortField.placeholderString = "8080"
+        serverPortField.target = self
+        serverPortField.action = #selector(serverPortChanged(_:))
+        serverPortField.formatter = portFormatter
+
+        managedGatewayPortField.stringValue = String(draftSettings.managedGatewayPort)
+        managedGatewayPortField.placeholderString = "8080"
+        managedGatewayPortField.target = self
+        managedGatewayPortField.action = #selector(managedGatewayPortChanged(_:))
+        managedGatewayPortField.formatter = portFormatter
 
         completionThresholdField.stringValue = String(draftSettings.progressCompletionThreshold)
         completionThresholdField.placeholderString = "99"
@@ -525,14 +551,26 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             return f
         }()
 
+        pythonPathOverrideField.stringValue = draftSettings.pythonPathOverride
+        pythonPathOverrideField.placeholderString = "Use managed backend defaults"
+        pythonPathOverrideField.target = self
+        pythonPathOverrideField.action = #selector(pythonPathOverrideChanged(_:))
+
         let thresholdNote = NSTextField(wrappingLabelWithString:
-            "Prompt processing logs never reach 100% — the server logs token counts, not generation. " +
+            "Prompt processing logs never reach 100% - the server logs token counts, not generation. " +
             "Set a percentage to treat as done. 0 disables this and the icon stays at the last logged value."
         )
         thresholdNote.font = NSFont.systemFont(ofSize: 11)
         thresholdNote.textColor = .secondaryLabelColor
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 5)
+        let networkNote = NSTextField(wrappingLabelWithString:
+            "Server port is used for direct launches, and for the hidden backend when the managed gateway is enabled. " +
+            "Gateway port is the client-facing port when the managed gateway is on. If they match, MLX Manager automatically moves the backend to a hidden +100 port."
+        )
+        networkNote.font = NSFont.systemFont(ofSize: 11)
+        networkNote.textColor = .secondaryLabelColor
+
+        let grid = NSGridView(numberOfColumns: 2, rows: 9)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = NSTextField(labelWithString: "")
@@ -546,30 +584,54 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = startAtLoginCheckbox
 
         grid.cell(atColumnIndex: 0, rowIndex: 3).contentView = NSTextField(labelWithString: "")
-        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = showLastLogLineCheckbox
+        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = managedGatewayCheckbox
 
         grid.cell(atColumnIndex: 0, rowIndex: 4).contentView =
+            NSTextField(labelWithString: "")
+        grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = showLastLogLineCheckbox
+
+        grid.cell(atColumnIndex: 0, rowIndex: 5).contentView =
+            NSTextField(labelWithString: "Server port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 5).contentView = serverPortField
+
+        grid.cell(atColumnIndex: 0, rowIndex: 6).contentView =
+            NSTextField(labelWithString: "Gateway port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = managedGatewayPortField
+
+        grid.cell(atColumnIndex: 0, rowIndex: 7).contentView =
+            NSTextField(labelWithString: "Python override:")
+        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = pythonPathOverrideField
+
+        grid.cell(atColumnIndex: 0, rowIndex: 8).contentView =
             NSTextField(labelWithString: "Complete at %:")
-        grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = completionThresholdField
+        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = completionThresholdField
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowSpacing = 8
 
+        serverPortField.widthAnchor.constraint(equalToConstant: 70).isActive = true
+        managedGatewayPortField.widthAnchor.constraint(equalToConstant: 70).isActive = true
         completionThresholdField.widthAnchor.constraint(equalToConstant: 60).isActive = true
 
         let container = NSView()
         container.addSubview(grid)
+        container.addSubview(networkNote)
         container.addSubview(thresholdNote)
         grid.translatesAutoresizingMaskIntoConstraints = false
+        networkNote.translatesAutoresizingMaskIntoConstraints = false
         thresholdNote.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             grid.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
             grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             grid.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -16),
 
+            networkNote.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            networkNote.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            networkNote.topAnchor.constraint(equalTo: grid.bottomAnchor, constant: 12),
+
             thresholdNote.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
             thresholdNote.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-            thresholdNote.topAnchor.constraint(equalTo: grid.bottomAnchor, constant: 12),
+            thresholdNote.topAnchor.constraint(equalTo: networkNote.bottomAnchor, constant: 12),
         ])
         return container
     }
@@ -598,15 +660,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             name: "New Preset",
             model: "mlx-community/",
             maxTokens: 40960,
-            port: 8080,
+            port: draftSettings.serverPort,
             prefillStepSize: 4096,
             promptCacheSize: 4,
             promptCacheBytes: 10 * 1024 * 1024 * 1024,
             trustRemoteCode: false,
             enableThinking: false,
             extraArgs: [],
-            serverType: .mlxLM,
-            pythonPath: EnvironmentInstaller.pythonPath
+            serverType: .mlxLM
         ))
         presetListTable.reloadData()
         let newRow = draftPresets.count - 1
@@ -650,8 +711,28 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         persistChanges()
     }
 
+    @objc private func managedGatewayToggled() {
+        draftSettings.managedGatewayEnabled = managedGatewayCheckbox.state == .on
+        persistChanges()
+    }
+
     @objc private func showLastLogLineToggled() {
         draftSettings.showLastLogLine = showLastLogLineCheckbox.state == .on
+        persistChanges()
+    }
+
+    @objc private func serverPortChanged(_ sender: NSTextField) {
+        draftSettings.serverPort = Int(sender.stringValue) ?? draftSettings.serverPort
+        persistChanges()
+    }
+
+    @objc private func managedGatewayPortChanged(_ sender: NSTextField) {
+        draftSettings.managedGatewayPort = Int(sender.stringValue) ?? draftSettings.managedGatewayPort
+        persistChanges()
+    }
+
+    @objc private func pythonPathOverrideChanged(_ sender: NSTextField) {
+        draftSettings.pythonPathOverride = sender.stringValue
         persistChanges()
     }
 
@@ -673,23 +754,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             )
             self?.installerOutput.scrollToEndOfDocument(nil)
         }
-        inst.onComplete = { [weak self] success in
-            guard let self else { return }
+        inst.onComplete = { success in
             if success {
                 let alert = NSAlert()
                 alert.messageText = "Installation complete"
-                alert.informativeText = "Update all presets to use \(EnvironmentInstaller.pythonPath)?"
-                alert.addButton(withTitle: "Update Presets")
-                alert.addButton(withTitle: "Leave as Is")
-                if alert.runModal() == .alertFirstButtonReturn {
-                    self.draftPresets = self.draftPresets.map {
-                        ServerConfig(name: $0.name, model: $0.model, maxTokens: $0.maxTokens,
-                                      extraArgs: $0.extraArgs, serverType: $0.serverType,
-                                      pythonPath: EnvironmentInstaller.pythonPath)
-                    }
-                    self.presetListTable.reloadData()
-                    self.populateDetail(row: self.presetListTable.selectedRow)
-                }
+                alert.informativeText = "The managed environment is ready for new launches."
+                alert.runModal()
             } else {
                 let alert = NSAlert()
                 alert.messageText = "Installation failed"
@@ -702,7 +772,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func closeTapped() {
         window?.makeFirstResponder(nil)
-        applyDetail()
+        applyPendingEdits()
         dismissed = true
         onDismiss?(draftPresets, draftSettings, false)
         window?.close()
@@ -779,12 +849,24 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         if !dismissed {
+            window?.makeFirstResponder(nil)
+            applyPendingEdits()
             onDismiss?(draftPresets, draftSettings, false)
         }
     }
 }
 
 // MARK: - Helpers
+
+private extension SettingsWindowController {
+    func applyPendingEdits() {
+        draftSettings.serverPort = Int(serverPortField.stringValue) ?? draftSettings.serverPort
+        draftSettings.managedGatewayPort = Int(managedGatewayPortField.stringValue) ?? draftSettings.managedGatewayPort
+        draftSettings.pythonPathOverride = pythonPathOverrideField.stringValue
+        draftSettings.progressCompletionThreshold = Int(completionThresholdField.stringValue) ?? 99
+        applyDetail()
+    }
+}
 
 private extension Array {
     subscript(safe index: Int) -> Element? {

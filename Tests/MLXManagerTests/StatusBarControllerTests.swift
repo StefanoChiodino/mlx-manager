@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import MLXManager
 
 // MARK: - Test Doubles
@@ -273,6 +274,31 @@ struct StatusBarControllerTests {
             fileExists: { _ in true }
         )
         let item = view.menuItems.first(where: { $0.title == "4-bit 40k" })
+        #expect(item?.enabled == true)
+    }
+
+    @Test("Global python override is used when checking preset environment")
+    func globalPythonOverrideIsUsedForEnvironmentCheck() {
+        let view = MockStatusBarView()
+        let preset = ServerConfig.fixture(name: "4-bit 40k", pythonPath: "/nonexistent/python")
+        var checkedPath: String?
+        var settings = AppSettings()
+        settings.pythonPathOverride = "~/override/python3"
+
+        let _ = StatusBarController(
+            view: view,
+            presets: [preset],
+            onStart: { _ in },
+            onStop: {},
+            settings: settings,
+            fileExists: { path in
+                checkedPath = path
+                return path == NSString(string: "~/override/python3").expandingTildeInPath
+            }
+        )
+
+        let item = view.menuItems.first(where: { $0.title == "4-bit 40k" })
+        #expect(checkedPath == NSString(string: "~/override/python3").expandingTildeInPath)
         #expect(item?.enabled == true)
     }
 

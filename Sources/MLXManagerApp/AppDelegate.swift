@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.mlx-manager", category: "app")
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
     private var serverCoordinator: ServerCoordinator!
+    private var gatewayServer: ManagedGatewayServer?
     private var settings = AppSettings()
 
     // Environment bootstrap
@@ -70,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         serverCoordinator.onProcessExit = { [weak self] in
             guard let self else { return }
             self.stopRAMPolling()
+            self.stopGateway()
             self.resetSession()
         }
 
@@ -97,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Environment bootstrap
 
     private func bootstrapEnvironmentIfNeeded(presets: [ServerConfig]) {
+        guard !settings.hasPythonPathOverride else { return }
         let checker = EnvironmentChecker()
         let backendsNeeded = Set(presets.map(\.serverType))
         let missing = backendsNeeded.filter { !checker.isReady(pythonPath: EnvironmentInstaller.pythonPath(for: $0)) }
@@ -124,6 +127,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             logger.info("adoptProcess skipped: \(error) — app likely owns the process")
         }
+        if let routing = ManagedGatewayRouting.recovered(server: found, presets: presets, settings: settings) {
+            do {
+                try startGateway(routing: routing)
+            } catch {
+                logger.error("recover gateway failed: \(error)")
+                serverCoordinator.stop()
+                return
+            }
+        }
         loadHistoricalLog()
         statusBarController.serverDidStart(server: found)
         if settings.ramGraphEnabled {
@@ -134,21 +146,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Server lifecycle
 
     private func startServer(config: ServerConfig) {
-        let resolvedConfig = config.withResolvedPythonPath()
+        let resolvedConfig = config.withPythonPath(settings.resolvedPythonPath(for: config))
+        let launchPlan = ServerLaunchPlan.plan(for: resolvedConfig, settings: settings)
         do {
-            try serverCoordinator.start(config: resolvedConfig)
+            switch launchPlan {
+            case let .direct(directConfig):
+                try serverCoordinator.start(config: directConfig)
+                statusBarController.serverDidStart()
+
+            case let .managed(routing):
+                try serverCoordinator.start(config: routing.backendConfig)
+                try startGateway(routing: routing)
+                statusBarController.serverDidStart(server: managedServerDescription(for: routing))
+            }
+
             loadHistoricalLog()
-            statusBarController.serverDidStart()
             if settings.ramGraphEnabled, let pid = serverCoordinator.pid {
                 startRAMPolling(pid: pid)
             }
         } catch {
+            stopGateway()
+            serverCoordinator.stop()
+            statusBarController.serverDidStop()
+            resetSession()
             logger.warning("startServer failed: \(error)")
         }
     }
 
     private func stopServer() {
         stopRAMPolling()
+        stopGateway()
         serverCoordinator.stop()
         statusBarController.serverDidStop()
         resetSession()
@@ -192,6 +219,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopRAMPolling() {
         ramPoller?.stop()
         ramPoller = nil
+    }
+
+    // MARK: - Gateway
+
+    private func startGateway(routing: ManagedGatewayRouting) throws {
+        let gateway = gatewayServer ?? ManagedGatewayServer()
+        gateway.onError = { [weak self] error in
+            self?.handleGatewayFailure(error)
+        }
+        try gateway.start(routing: routing)
+        gatewayServer = gateway
+    }
+
+    private func stopGateway() {
+        gatewayServer?.stop()
+    }
+
+    private func handleGatewayFailure(_ error: Error) {
+        logger.error("gateway failed: \(error)")
+        stopRAMPolling()
+        stopGateway()
+        serverCoordinator.stop()
+        statusBarController.serverDidStop()
+        resetSession()
+    }
+
+    private func managedServerDescription(for routing: ManagedGatewayRouting) -> DiscoveredServer {
+        DiscoveredServer(
+            pid: serverCoordinator.pid ?? 0,
+            command: routing.backendConfig.pythonPath,
+            arguments: [
+                "-m", routing.backendConfig.serverType.serverEntryName,
+                "--model", routing.activeModel,
+                "--port", String(routing.publicPort)
+            ],
+            serverType: routing.backendConfig.serverType,
+            model: routing.activeModel,
+            port: routing.publicPort
+        )
     }
 
     // MARK: - Window actions

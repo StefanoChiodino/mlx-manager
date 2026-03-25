@@ -51,7 +51,7 @@ public enum ConfigLoader {
             guard let name = dto.name else { throw ConfigError.missingField("name") }
             guard let model = dto.model else { throw ConfigError.missingField("model") }
             guard let maxTokens = dto.maxTokens else { throw ConfigError.missingField("maxTokens") }
-            guard let pythonPath = dto.pythonPath else { throw ConfigError.missingField("pythonPath") }
+            let serverType = dto.serverType ?? .mlxLM
             return ServerConfig(
                 name: name,
                 model: model,
@@ -63,12 +63,12 @@ public enum ConfigLoader {
                 trustRemoteCode: dto.trustRemoteCode ?? false,
                 enableThinking: dto.enableThinking ?? false,
                 extraArgs: dto.extraArgs ?? [],
-                serverType: dto.serverType ?? .mlxLM,
+                serverType: serverType,
                 kvBits: dto.kvBits ?? 0,
                 kvGroupSize: dto.kvGroupSize ?? 64,
                 maxKvSize: dto.maxKvSize ?? 0,
                 quantizedKvStart: dto.quantizedKvStart ?? 0,
-                pythonPath: pythonPath
+                pythonPath: dto.pythonPath
             )
         }
     }

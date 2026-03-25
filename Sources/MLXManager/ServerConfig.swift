@@ -44,6 +44,10 @@ public struct ServerConfig: Equatable, Codable {
     public let maxKvSize: Int         // 0 = disabled (omit flag)
     public let quantizedKvStart: Int  // only emitted when kvBits > 0
 
+    public static func defaultPythonPath(for serverType: ServerType) -> String {
+        EnvironmentBootstrapper.pythonPath(for: serverType)
+    }
+
     public init(
         name: String,
         model: String,
@@ -60,7 +64,7 @@ public struct ServerConfig: Equatable, Codable {
         kvGroupSize: Int = 64,
         maxKvSize: Int = 0,
         quantizedKvStart: Int = 0,
-        pythonPath: String
+        pythonPath: String? = nil
     ) {
         self.name = name
         self.model = model
@@ -77,7 +81,7 @@ public struct ServerConfig: Equatable, Codable {
         self.kvGroupSize = kvGroupSize
         self.maxKvSize = maxKvSize
         self.quantizedKvStart = quantizedKvStart
-        self.pythonPath = pythonPath
+        self.pythonPath = pythonPath ?? Self.defaultPythonPath(for: serverType)
     }
 
     // MARK: - Decodable (custom to supply defaults for new VLM fields)
@@ -101,7 +105,8 @@ public struct ServerConfig: Equatable, Codable {
         enableThinking   = try c.decode(Bool.self,       forKey: .enableThinking)
         extraArgs        = try c.decode([String].self,   forKey: .extraArgs)
         serverType       = try c.decodeIfPresent(ServerType.self,  forKey: .serverType)       ?? .mlxLM
-        pythonPath       = try c.decode(String.self,     forKey: .pythonPath)
+        pythonPath       = try c.decodeIfPresent(String.self, forKey: .pythonPath)
+            ?? Self.defaultPythonPath(for: serverType)
         // VLM fields — fall back to defaults when absent (e.g. old serialised configs)
         kvBits           = try c.decodeIfPresent(Int.self, forKey: .kvBits)           ?? 0
         kvGroupSize      = try c.decodeIfPresent(Int.self, forKey: .kvGroupSize)      ?? 64
@@ -123,6 +128,38 @@ public struct ServerConfig: Equatable, Codable {
             kvBits: kvBits, kvGroupSize: kvGroupSize,
             maxKvSize: maxKvSize, quantizedKvStart: quantizedKvStart,
             pythonPath: resolved
+        )
+    }
+
+    /// Returns a copy of this config with `port` replaced.
+    /// All other fields are preserved exactly.
+    public func withPort(_ port: Int) -> ServerConfig {
+        guard port != self.port else { return self }
+        return ServerConfig(
+            name: name, model: model, maxTokens: maxTokens,
+            port: port, prefillStepSize: prefillStepSize,
+            promptCacheSize: promptCacheSize, promptCacheBytes: promptCacheBytes,
+            trustRemoteCode: trustRemoteCode, enableThinking: enableThinking,
+            extraArgs: extraArgs, serverType: serverType,
+            kvBits: kvBits, kvGroupSize: kvGroupSize,
+            maxKvSize: maxKvSize, quantizedKvStart: quantizedKvStart,
+            pythonPath: pythonPath
+        )
+    }
+
+    /// Returns a copy of this config with `pythonPath` replaced.
+    /// All other fields are preserved exactly.
+    public func withPythonPath(_ pythonPath: String) -> ServerConfig {
+        guard pythonPath != self.pythonPath else { return self }
+        return ServerConfig(
+            name: name, model: model, maxTokens: maxTokens,
+            port: port, prefillStepSize: prefillStepSize,
+            promptCacheSize: promptCacheSize, promptCacheBytes: promptCacheBytes,
+            trustRemoteCode: trustRemoteCode, enableThinking: enableThinking,
+            extraArgs: extraArgs, serverType: serverType,
+            kvBits: kvBits, kvGroupSize: kvGroupSize,
+            maxKvSize: maxKvSize, quantizedKvStart: quantizedKvStart,
+            pythonPath: pythonPath
         )
     }
 }

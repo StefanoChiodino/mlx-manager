@@ -50,6 +50,20 @@ final class UserPresetStoreTests: XCTestCase {
         XCTAssertEqual(loaded, [preset])
     }
 
+    func test_userPresetStore_save_omitsDefaultPythonPath() throws {
+        let preset = ServerConfig(
+            name: "Default Python",
+            model: "mlx-community/default-model",
+            maxTokens: 4096,
+            serverType: .mlxLM
+        )
+
+        try UserPresetStore.save([preset], to: tempURL)
+
+        let yaml = try String(contentsOf: tempURL, encoding: .utf8)
+        XCTAssertFalse(yaml.contains("pythonPath:"))
+    }
+
     func test_userPresetStore_loadMissingFileThrows() {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("nonexistent-\(UUID().uuidString).yaml")

@@ -49,10 +49,11 @@ public enum UserPresetStore {
             let kvGroupSize: Int
             let maxKvSize: Int
             let quantizedKvStart: Int
-            let pythonPath: String
+            let pythonPath: String?
         }
         let file = PresetsFile(presets: presets.map {
-            PresetDTO(
+            let defaultPythonPath = ServerConfig.defaultPythonPath(for: $0.serverType)
+            return PresetDTO(
                 name: $0.name, model: $0.model, maxTokens: $0.maxTokens,
                 port: $0.port, prefillStepSize: $0.prefillStepSize,
                 promptCacheSize: $0.promptCacheSize, promptCacheBytes: $0.promptCacheBytes,
@@ -60,7 +61,7 @@ public enum UserPresetStore {
                 extraArgs: $0.extraArgs, serverType: $0.serverType.rawValue,
                 kvBits: $0.kvBits, kvGroupSize: $0.kvGroupSize,
                 maxKvSize: $0.maxKvSize, quantizedKvStart: $0.quantizedKvStart,
-                pythonPath: $0.pythonPath
+                pythonPath: $0.pythonPath == defaultPythonPath ? nil : $0.pythonPath
             )
         })
         return try YAMLEncoder().encode(file)

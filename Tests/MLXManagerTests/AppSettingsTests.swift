@@ -45,6 +45,14 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(AppSettings().startAtLogin, false)
     }
 
+    func test_appSettings_serverPort_defaultsTo8080() {
+        XCTAssertEqual(AppSettings().serverPort, 8080)
+    }
+
+    func test_appSettings_managedGatewayPort_defaultsTo8080() {
+        XCTAssertEqual(AppSettings().managedGatewayPort, 8080)
+    }
+
     func test_appSettings_startAtLogin_roundTripsJSON() throws {
         var s = AppSettings()
         s.startAtLogin = true
@@ -100,6 +108,101 @@ final class AppSettingsTests: XCTestCase {
 
     func test_appSettings_showLastLogLine_defaultsFalse() {
         XCTAssertEqual(AppSettings().showLastLogLine, false)
+    }
+
+    func test_appSettings_managedGatewayEnabled_defaultsFalse() {
+        XCTAssertEqual(AppSettings().managedGatewayEnabled, false)
+    }
+
+    func test_appSettings_managedGatewayEnabled_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.managedGatewayEnabled = true
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.managedGatewayEnabled, true)
+    }
+
+    func test_appSettings_managedGatewayEnabled_migratesFromOldJSON() throws {
+        let oldData = Data("""
+        {
+          "ramGraphEnabled": false,
+          "ramPollInterval": 5,
+          "startAtLogin": false,
+          "logPath": "~/repos/mlx/Logs/server.log",
+          "progressCompletionThreshold": 99,
+          "showLastLogLine": true
+        }
+        """.utf8)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: oldData)
+        XCTAssertEqual(decoded.managedGatewayEnabled, false)
+    }
+
+    func test_appSettings_networkPorts_roundTripJSON() throws {
+        var s = AppSettings()
+        s.serverPort = 8088
+        s.managedGatewayPort = 8080
+
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(decoded.serverPort, 8088)
+        XCTAssertEqual(decoded.managedGatewayPort, 8080)
+    }
+
+    func test_appSettings_managedBackendPort_usesServerPortWhenPortsDiffer() {
+        var settings = AppSettings()
+        settings.serverPort = 8088
+        settings.managedGatewayPort = 8080
+
+        XCTAssertEqual(settings.managedGatewayBackendPort, 8088)
+    }
+
+    func test_appSettings_managedBackendPort_usesHiddenOffsetWhenPortsMatch() {
+        var settings = AppSettings()
+        settings.serverPort = 8080
+        settings.managedGatewayPort = 8080
+
+        XCTAssertEqual(settings.managedGatewayBackendPort, 8180)
+    }
+
+    func test_appSettings_pythonPathOverride_defaultsEmpty() {
+        XCTAssertEqual(AppSettings().pythonPathOverride, "")
+    }
+
+    func test_appSettings_pythonPathOverride_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.pythonPathOverride = "~/custom/python3"
+
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(decoded.pythonPathOverride, "~/custom/python3")
+    }
+
+    func test_appSettings_resolvedPythonPath_usesOverrideWhenPresent() {
+        var settings = AppSettings()
+        settings.pythonPathOverride = "~/custom/python3"
+        let config = ServerConfig(name: "Test", model: "some/model", maxTokens: 4096, serverType: .mlxVLM)
+
+        let resolved = settings.resolvedPythonPath(for: config)
+
+        XCTAssertFalse(resolved.hasPrefix("~"))
+        XCTAssertTrue(resolved.hasSuffix("/custom/python3"))
+    }
+
+    func test_appSettings_resolvedPythonPath_usesConfigPathWhenOverrideMissing() {
+        let settings = AppSettings()
+        let config = ServerConfig(
+            name: "Test",
+            model: "some/model",
+            maxTokens: 4096,
+            pythonPath: "~/custom/python3"
+        )
+
+        let resolved = settings.resolvedPythonPath(for: config)
+
+        XCTAssertFalse(resolved.hasPrefix("~"))
+        XCTAssertTrue(resolved.hasSuffix("/custom/python3"))
     }
 
     func test_appSettings_showLastLogLine_roundTripsJSON() throws {

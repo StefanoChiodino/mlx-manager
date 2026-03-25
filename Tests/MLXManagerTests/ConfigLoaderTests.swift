@@ -132,17 +132,17 @@ final class ConfigLoaderTests: XCTestCase {
         }
     }
 
-    /// pythonPath is required
-    func test_load_missingPythonPathField_throwsMissingField() {
+    /// pythonPath defaults to the backend-managed environment when omitted
+    func test_load_missingPythonPathField_usesBackendDefault() throws {
         let yaml = """
         presets:
           - name: "broken"
             model: "some-model"
             maxTokens: 40960
+            serverType: "mlxVLM"
         """
-        XCTAssertThrowsError(try ConfigLoader.load(yaml: yaml)) { error in
-            XCTAssertEqual(error as? ConfigError, .missingField("pythonPath"))
-        }
+        let presets = try ConfigLoader.load(yaml: yaml)
+        XCTAssertEqual(presets[0].pythonPath, EnvironmentBootstrapper.pythonPath(for: .mlxVLM))
     }
 
     /// port defaults to 8080 when not specified
