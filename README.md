@@ -1,44 +1,44 @@
 # MLX Manager
 
-A native macOS menu bar application (Apple Silicon) for managing MLX LLM server instances.
+![MLX Manager icon](docs/images/icon.png)
 
-Standby and processing:
+A native macOS menu bar app for managing MLX LLM/VLM server instances. Apple Silicon only.
 
-![Standby](docs/images/standby.png) | ![Processing](docs/images/processing.png)
+One-click start/stop, live progress in the menu bar, config presets, environment auto-setup.
 
-Settings:
+![Status bar](docs/images/bar.png)
+
+| Standby | Processing | Error |
+| - | - | - |
+| ![Standby](docs/images/standby.png) | ![Processing](docs/images/processing.png) | ![Error](docs/images/error.png) |
 
 ![Settings](docs/images/settings.png)
 
-## Development Methodology
+## Features
 
-This project follows two non-negotiable disciplines — see [AGENTS.md](AGENTS.md) for the full rules:
+- Menu bar icon with live progress arc during prompt processing
+- Supports both `mlx-lm` and `mlx-vlm` backends
+- YAML config presets (bundled defaults + user-editable)
+- Auto-detects already-running server processes on launch
+- Environment bootstrapping via `uv` (separate venvs per backend)
+- Log viewer, request history, RAM graph
+- OpenAI-compatible gateway proxy
 
-- **OpenSpec** — all work is spec-driven. Read `openspec/` before touching code.
-- **Red-Green TDD** — failing test first, always. No exceptions.
+## Stack
 
-## Spec Structure
+Swift, AppKit (NSStatusItem), XCTest, Swift Package Manager.
 
-```text
-openspec/
-├── project.md              # Tech stack, architecture, domain knowledge
-├── specs/
-│   └── core/spec.md        # Source-of-truth requirements (Gherkin scenarios)
-└── changes/                # Active proposals/designs/tasks (work in progress)
+## Building
+
+```sh
+swift build
+swift test
 ```
 
-## Quick Reference
-
-**Problem**: MLX server has no "100% complete" signal. Manual start/stop is tedious.
-
-**Solution**: Menu bar app with one-click controls + log parsing for live progress.
-
-**Stack**: Swift, AppKit (NSStatusItem), XCTest, Swift Package Manager.
+Requires macOS + Apple Silicon. No Xcode project — pure SPM.
 
 ## Working on This Repo
 
-1. Read `AGENTS.md` first
-2. Read `openspec/project.md` for domain context
-3. Read `openspec/specs/core/spec.md` for current requirements
-4. Check `openspec/changes/` for any active work in progress
-5. Follow OpenSpec + Red-Green TDD — by the book
+1. Read `AGENTS.md` — defines the TDD workflow
+2. Read `docs/PROJECT.md` for architecture and domain context
+3. Read `docs/SPEC.md` for requirements
