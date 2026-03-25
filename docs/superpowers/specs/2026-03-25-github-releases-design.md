@@ -12,7 +12,7 @@ A single GitHub Actions workflow publishes a new GitHub Release whenever a versi
 
 ## Trigger
 
-```
+```yaml
 on:
   push:
     tags:
@@ -21,9 +21,20 @@ on:
 
 Push a tag → release. No manual dispatch. No branch conditions.
 
+## Permissions
+
+The workflow requires write access to create the GitHub Release and upload assets:
+
+```yaml
+permissions:
+  contents: write
+```
+
+Without this, `softprops/action-gh-release@v2` fails with 403 on repos where the default `GITHUB_TOKEN` is read-only (the current GitHub default for new repos).
+
 ## Runner
 
-`macos-15` — Apple Silicon GitHub-hosted runner. Required because `swift build` on this project targets Apple Silicon.
+`macos-15` — pinned explicitly (not `macos-latest`) for build reproducibility. Apple Silicon runner required because `swift build` targets Apple Silicon. `macos-15` is currently the only Apple Silicon runner available on GitHub-hosted infrastructure.
 
 ## Job: `release`
 
@@ -34,21 +45,31 @@ Single job, no artifact handoff between jobs.
 1. **Checkout** — `actions/checkout@v4`
 2. **Build** — `swift build -c release`
    - Produces `.build/release/MLXManagerApp`
-3. **Bundle** — Inline shell replicating `make bundle`:
-   - `mkdir -p build/MLXManager.app/Contents/MacOS build/MLXManager.app/Contents/Resources`
-   - Copy binary → `Contents/MacOS/MLXManager`
-   - Copy `Resources/Info.plist` → `Contents/Info.plist`
-   - `iconutil -c icns Resources/AppIcon.iconset -o Contents/Resources/AppIcon.icns`
-   - Copy `Sources/MLXManagerApp/presets.yaml` → `Contents/Resources/presets.yaml`
-   - Copy `Resources/LaunchAgent.plist` → `Contents/Resources/LaunchAgent.plist`
+3. **Bundle** — Inline shell equivalent to the relevant parts of `make bundle`. The Makefile contains two lines that write directly to `/Applications` (for local install convenience) — these are omitted in CI:
+   ```sh
+   mkdir -p build/MLXManager.app/Contents/MacOS build/MLXManager.app/Contents/Resources
+   cp .build/release/MLXManagerApp build/MLXManager.app/Contents/MacOS/MLXManager
+   cp Resources/Info.plist build/MLXManager.app/Contents/Info.plist
+   iconutil -c icns Resources/AppIcon.iconset -o build/MLXManager.app/Contents/Resources/AppIcon.icns
+   cp Sources/MLXManagerApp/presets.yaml build/MLXManager.app/Contents/Resources/presets.yaml
+   cp Resources/LaunchAgent.plist build/MLXManager.app/Contents/Resources/LaunchAgent.plist
+   ```
+   Note: `iconutil` assumes `Resources/AppIcon.iconset/` is a valid iconset. If `iconutil` fails on the CI runner, the iconset must be fixed before the release pipeline will work.
 4. **Sign** — `codesign --force --deep -s - build/MLXManager.app` (ad-hoc)
-5. **Create DMG** — `hdiutil create` with:
-   - Source: temp staging directory containing `MLXManager.app` and a `/Applications` symlink
-   - Output: `MLXManager-${{ github.ref_name }}.dmg`
-   - Format: `UDZO` (compressed)
+5. **Create DMG** — Staging directory with a relative `/Applications` symlink, then `hdiutil create`:
+   ```sh
+   mkdir dmg-staging
+   cp -r build/MLXManager.app dmg-staging/
+   ln -s /Applications dmg-staging/Applications
+   hdiutil create -volname MLXManager \
+     -srcfolder dmg-staging \
+     -ov -format UDZO \
+     "MLXManager-${{ github.ref_name }}.dmg"
+   ```
+   The symlink target is the absolute path `/Applications`. Inside the mounted DMG, Finder resolves this to the system Applications folder, enabling drag-and-drop installation.
 6. **Publish release** — `softprops/action-gh-release@v2`:
    - Name: `${{ github.ref_name }}`
-   - Body: tag name + link to README on `main`
+   - Body: see Release Notes Format below
    - Files: `MLXManager-${{ github.ref_name }}.dmg`
    - Uses default `GITHUB_TOKEN` — no additional secrets required
 
@@ -57,12 +78,19 @@ Single job, no artifact handoff between jobs.
 ```
 MLXManager ${{ github.ref_name }}
 
-See the [README](https://github.com/<owner>/mlx-manager/blob/main/README.md) for installation and usage.
+See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage.
 ```
+
+`${{ github.repository }}` resolves to `owner/repo` automatically — no hardcoded owner.
 
 ## No Tests in Release Job
 
-Tests are a developer-local responsibility (per project TDD workflow). The release job does not run `swift test` — this avoids CI flakiness from environment differences and keeps the release pipeline fast.
+Tests are a developer-local responsibility enforced by the Red-Green TDD workflow in `AGENTS.md`. The release job does not run `swift test`. This is a deliberate tradeoff: release CI stays fast and simple; test correctness is the developer's gate before tagging.
+
+## Out of Scope
+
+- **`Info.plist` version injection**: `CFBundleShortVersionString` remains static (`1.0`). The `.app` version shown in Finder will not match the release tag. Acceptable for now — can be added later with a `PlistBuddy` step.
+- **Notarization**: Ad-hoc signing only. Gatekeeper will prompt on first launch. Full notarization requires an Apple Developer account and is out of scope.
 
 ## Versioning Convention
 
