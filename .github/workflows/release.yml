@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Bundle
+        run: |
+          mkdir -p build/MLXManager.app/Contents/MacOS build/MLXManager.app/Contents/Resources
+          cp .build/release/MLXManagerApp build/MLXManager.app/Contents/MacOS/MLXManager
+          cp Resources/Info.plist build/MLXManager.app/Contents/Info.plist
+          iconutil -c icns Resources/AppIcon.iconset -o build/MLXManager.app/Contents/Resources/AppIcon.icns
+          cp Sources/MLXManagerApp/presets.yaml build/MLXManager.app/Contents/Resources/presets.yaml
+          cp Resources/LaunchAgent.plist build/MLXManager.app/Contents/Resources/LaunchAgent.plist
+
+      - name: Sign
+        run: codesign --force --deep -s - build/MLXManager.app
+
+      - name: Create DMG
+        run: |
+          mkdir dmg-staging
+          cp -r build/MLXManager.app dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          hdiutil create -volname MLXManager \
+            -srcfolder dmg-staging \
+            -ov -format UDZO \
+            "MLXManager-${{ github.ref_name }}.dmg"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: |
+            MLXManager ${{ github.ref_name }}
+
+            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage.
+          files: MLXManager-${{ github.ref_name }}.dmg
