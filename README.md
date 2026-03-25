@@ -14,6 +14,8 @@ One-click start/stop, live progress in the menu bar, config presets, environment
 
 ![Settings](docs/images/settings.png)
 
+![Tok/s](docs/images/speed.png)
+
 ## Features
 
 - Menu bar icon with live progress arc during prompt processing

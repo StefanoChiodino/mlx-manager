@@ -591,50 +591,27 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let grid = NSGridView(numberOfColumns: 2, rows: 10)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
-
-        grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = ramGraphCheckbox
-        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 0, length: 1))
-
-        grid.cell(atColumnIndex: 0, rowIndex: 1).contentView =
-            NSTextField(labelWithString: "Poll interval:")
-        grid.cell(atColumnIndex: 1, rowIndex: 1).contentView = ramPollPopup
-
-        grid.cell(atColumnIndex: 0, rowIndex: 2).contentView = startAtLoginCheckbox
-        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 2, length: 1))
-
-        grid.cell(atColumnIndex: 0, rowIndex: 3).contentView = managedGatewayCheckbox
-        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 3, length: 1))
-
-        grid.cell(atColumnIndex: 0, rowIndex: 4).contentView = showLastLogLineCheckbox
-        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 4, length: 1))
-
-        grid.cell(atColumnIndex: 0, rowIndex: 5).contentView = showPrefillTPSCheckbox
-        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 5, length: 1))
-
-        grid.cell(atColumnIndex: 0, rowIndex: 6).contentView =
-            NSTextField(labelWithString: "Server port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = serverPortField
-
-        grid.cell(atColumnIndex: 0, rowIndex: 7).contentView =
-            NSTextField(labelWithString: "Gateway port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = managedGatewayPortField
-
-        grid.cell(atColumnIndex: 0, rowIndex: 8).contentView =
-            NSTextField(labelWithString: "Python override:")
-        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = pythonPathOverrideField
-
-        grid.cell(atColumnIndex: 0, rowIndex: 9).contentView =
-            NSTextField(labelWithString: "Complete at %:")
-        grid.cell(atColumnIndex: 1, rowIndex: 9).contentView = completionThresholdField
-
         grid.column(at: 0).xPlacement = .trailing
-        grid.column(at: 1).xPlacement = .fill
+        grid.column(at: 1).xPlacement = .leading
         grid.rowSpacing = 8
 
-        // Merged rows (checkboxes spanning both columns) must override the trailing placement
-        for rowIndex in [0, 2, 3, 4] {
-            grid.cell(atColumnIndex: 0, rowIndex: rowIndex).xPlacement = .leading
-        }
+        // Checkboxes go in column 1 (value side) so they left-align with the inputs.
+        // Column 0 is left empty for those rows.
+        grid.cell(atColumnIndex: 1, rowIndex: 0).contentView = ramGraphCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 1).contentView = NSTextField(labelWithString: "Poll interval:")
+        grid.cell(atColumnIndex: 1, rowIndex: 1).contentView = ramPollPopup
+        grid.cell(atColumnIndex: 1, rowIndex: 2).contentView = startAtLoginCheckbox
+        grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = managedGatewayCheckbox
+        grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = showLastLogLineCheckbox
+        grid.cell(atColumnIndex: 1, rowIndex: 5).contentView = showPrefillTPSCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 6).contentView = NSTextField(labelWithString: "Server port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = serverPortField
+        grid.cell(atColumnIndex: 0, rowIndex: 7).contentView = NSTextField(labelWithString: "Gateway port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = managedGatewayPortField
+        grid.cell(atColumnIndex: 0, rowIndex: 8).contentView = NSTextField(labelWithString: "Python override:")
+        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = pythonPathOverrideField
+        grid.cell(atColumnIndex: 0, rowIndex: 9).contentView = NSTextField(labelWithString: "Complete at %:")
+        grid.cell(atColumnIndex: 1, rowIndex: 9).contentView = completionThresholdField
 
         serverPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
         managedGatewayPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
