@@ -811,7 +811,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         if snapshotSettings.startAtLogin != (startAtLoginCheckbox.state == .on) {
             if snapshotSettings.startAtLogin { LoginItemManager.enable() } else { LoginItemManager.disable() }
         }
-        try? UserPresetStore.save(snapshotPresets, to: UserPresetStore.defaultURL)
+        try? UserPresetStore.save(snapshotPresets, to: saveURL)
         dismissed = true
         onDismiss?(snapshotPresets, snapshotSettings, true)
         window?.close()

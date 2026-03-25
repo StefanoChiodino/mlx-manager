@@ -18,7 +18,8 @@ final class SettingsWindowControllerTests: XCTestCase {
                     pythonPath: "/usr/bin/python3"
                 )
             ],
-            settings: AppSettings()
+            settings: AppSettings(),
+            saveURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".yaml")
         )
         let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
         let tokensField = try XCTUnwrap(reflectedValue(named: "detailMaxTokens", in: controller, as: NSTextField.self))
@@ -45,7 +46,8 @@ final class SettingsWindowControllerTests: XCTestCase {
                     pythonPath: "/usr/bin/python3"
                 )
             ],
-            settings: AppSettings()
+            settings: AppSettings(),
+            saveURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".yaml")
         )
         let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
         let tokensField = try XCTUnwrap(reflectedValue(named: "detailMaxTokens", in: controller, as: NSTextField.self))
