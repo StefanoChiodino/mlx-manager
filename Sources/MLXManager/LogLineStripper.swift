@@ -29,7 +29,7 @@ public enum LogLineStripper {
     // Extracts "POST /completions 200" from the access log line format:
     // 127.0.0.1 - - [date] "POST /v1/chat/completions HTTP/1.1" 200 -
     private static let httpSummaryRE = try! NSRegularExpression(
-        pattern: #""(POST|GET|PUT|DELETE|PATCH) (?:.*/)?([\w.]+) HTTP/[\d.]+" (\d{3})"#
+        pattern: #""?(POST|GET|PUT|DELETE|PATCH) (?:.*/)?([\w.]+) HTTP/[\d.]+"? (\d{3})"#
     )
 
     private static func httpCompletionSummary(_ line: String) -> String {

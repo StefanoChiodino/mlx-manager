@@ -106,6 +106,13 @@ final class LogLineStripperEventTests: XCTestCase {
         XCTAssertEqual(result, "POST /completions 200")
     }
 
+    func test_strip_httpCompletionEvent_newFormat_returnsCompactSummary() {
+        // New format: no IP prefix, no opening quote, trailing quote before status
+        let line = "POST /v1/chat/completions HTTP/1.1\" 200"
+        let result = LogLineStripper.strip(line, event: .httpCompletion)
+        XCTAssertEqual(result, "POST /completions 200")
+    }
+
     // MARK: - nil event (existing strip+truncate behaviour preserved)
 
     func test_strip_nilEvent_shortPlainLine_leftUnchanged() {
