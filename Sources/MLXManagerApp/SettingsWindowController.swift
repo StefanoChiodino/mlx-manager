@@ -68,11 +68,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let installerOutput = NSTextView()
     private var installer: EnvironmentInstaller?
 
-    init(presets: [ServerConfig], settings: AppSettings) {
+    private let saveURL: URL
+
+    init(presets: [ServerConfig], settings: AppSettings, saveURL: URL = UserPresetStore.defaultURL) {
         self.draftPresets = presets
         self.draftSettings = settings
         self.snapshotPresets = presets
         self.snapshotSettings = settings
+        self.saveURL = saveURL
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
@@ -197,6 +200,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             f.isEditable = true
             f.target = self
             f.action = #selector(detailFieldChanged(_:))
+            f.cell?.wraps = false
+            f.cell?.isScrollable = true
         }
         detailTrustRemote.target = self
         detailTrustRemote.action = #selector(detailCheckboxChanged(_:))
@@ -660,7 +665,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     // MARK: - Persistence
 
     private func persistChanges() {
-        try? UserPresetStore.save(draftPresets, to: UserPresetStore.defaultURL)
+        try? UserPresetStore.save(draftPresets, to: saveURL)
         onChange?(draftPresets, draftSettings)
     }
 
@@ -794,6 +799,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     @objc private func closeTapped() {
         window?.makeFirstResponder(nil)
         applyPendingEdits()
+        persistChanges()
         dismissed = true
         onDismiss?(draftPresets, draftSettings, false)
         window?.close()
@@ -872,6 +878,7 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
         if !dismissed {
             window?.makeFirstResponder(nil)
             applyPendingEdits()
+            persistChanges()
             onDismiss?(draftPresets, draftSettings, false)
         }
     }

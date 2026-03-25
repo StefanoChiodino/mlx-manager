@@ -88,6 +88,36 @@ final class SettingsWindowControllerTests: XCTestCase {
         XCTAssertEqual(dismissedSettings?.serverPort, 9090)
     }
 
+    func test_close_persistsPresetEditsToDisk() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".yaml")
+        let controller = SettingsWindowController(
+            presets: [
+                ServerConfig(
+                    name: "4-bit 40k",
+                    model: "mlx-community/old-model",
+                    maxTokens: 40 * 1024,
+                    pythonPath: "/usr/bin/python3"
+                )
+            ],
+            settings: AppSettings(),
+            saveURL: tempURL
+        )
+        let table = try XCTUnwrap(reflectedValue(named: "presetListTable", in: controller, as: NSTableView.self))
+        let modelField = try XCTUnwrap(reflectedValue(named: "detailModel", in: controller, as: NSTextField.self))
+
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        controller.tableViewSelectionDidChange(
+            Notification(name: NSTableView.selectionDidChangeNotification, object: table)
+        )
+        modelField.stringValue = "mlx-community/new-model"
+
+        controller.perform(NSSelectorFromString("closeTapped"))
+
+        let saved = try UserPresetStore.load(from: tempURL)
+        XCTAssertEqual(saved.first?.model, "mlx-community/new-model")
+    }
+
     private func reflectedValue<T>(named label: String, in subject: Any, as type: T.Type) -> T? {
         Mirror(reflecting: subject).descendant(label) as? T
     }
