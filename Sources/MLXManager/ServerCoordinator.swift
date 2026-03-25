@@ -103,7 +103,7 @@ public final class ServerCoordinator {
 
     private func rawLine(for event: LogEvent) -> String {
         switch event {
-        case let .progress(current, total, _):
+        case let .progress(current, total, _, _):
             return "Prompt processing progress: \(current)/\(total)"
         case let .kvCaches(gpuGB: gpu, tokens: tokens):
             return String(format: "KV Caches: ... %.2f GB, latest user cache %d tokens", gpu, tokens)

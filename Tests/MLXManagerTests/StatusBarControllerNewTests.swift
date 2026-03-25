@@ -27,7 +27,7 @@ final class StatusBarControllerNewTests: XCTestCase {
         controller.serverDidStart()
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 27611, total: 41061, percentage: 67.24))
+        state.handle(.progress(current: 27611, total: 41061, percentage: 67.24, timestamp: Date()))
         controller.update(state: state)
         let item = view.menuItems.first
         XCTAssertEqual(item?.title, "27,611 / 41,061  (67%)")
@@ -41,7 +41,7 @@ final class StatusBarControllerNewTests: XCTestCase {
         controller.serverDidStart()
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97))
+        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97, timestamp: Date()))
         controller.update(state: state)
         if case let .processing(fraction) = view.lastState {
             XCTAssertEqual(fraction, 4096.0 / 41061.0, accuracy: 0.001)

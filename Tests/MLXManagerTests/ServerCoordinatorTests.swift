@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import MLXManager
 
@@ -87,7 +88,7 @@ struct ServerCoordinatorTests {
         var receivedState: ServerState?
         coordinator.onStateChange = { receivedState = $0 }
 
-        tailer.fire(.progress(current: 5, total: 100, percentage: 5.0))
+        tailer.fire(.progress(current: 5, total: 100, percentage: 5.0, timestamp: Date()))
 
         #expect(receivedState != nil)
         #expect(receivedState?.status == .processing)

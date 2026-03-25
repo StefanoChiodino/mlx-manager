@@ -98,7 +98,7 @@ final class LogTailerTests: XCTestCase {
         watcher.simulateChange()
 
         XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events.first, .progress(current: 4096, total: 41061, percentage: (4096.0 / 41061.0) * 100))
+        XCTAssertEqual(events.first, .progress(current: 4096, total: 41061, percentage: (4096.0 / 41061.0) * 100, timestamp: Date()))
     }
 
     // MARK: - 3. non-matching lines ignored
@@ -126,8 +126,8 @@ final class LogTailerTests: XCTestCase {
         watcher.simulateChange()
 
         XCTAssertEqual(events.count, 2)
-        XCTAssertEqual(events[0], .progress(current: 4096, total: 41061, percentage: (4096.0 / 41061.0) * 100))
-        XCTAssertEqual(events[1], .progress(current: 8192, total: 41061, percentage: (8192.0 / 41061.0) * 100))
+        XCTAssertEqual(events[0], .progress(current: 4096, total: 41061, percentage: (4096.0 / 41061.0) * 100, timestamp: Date()))
+        XCTAssertEqual(events[1], .progress(current: 8192, total: 41061, percentage: (8192.0 / 41061.0) * 100, timestamp: Date()))
     }
 
     // MARK: - 5. partial line buffered
@@ -235,7 +235,7 @@ final class LogTailerTests: XCTestCase {
         watcher.simulateChange()
 
         XCTAssertEqual(events.count, 2)
-        XCTAssertEqual(events[1], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100))
+        XCTAssertEqual(events[1], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100, timestamp: Date()))
     }
 
     // MARK: - 10. log rotation — line buffer is reset on rotation
@@ -278,6 +278,6 @@ final class LogTailerTests: XCTestCase {
 
         // The partial line from the old file must not bleed into the new file's line
         XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events[0], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100))
+        XCTAssertEqual(events[0], .progress(current: 41056, total: 41061, percentage: (41056.0 / 41061.0) * 100, timestamp: Date()))
     }
 }

@@ -80,7 +80,7 @@ final class LogLineStripperEventTests: XCTestCase {
 
     func test_strip_progressEvent_returnsCompactFraction() {
         let line = "2026-03-24 23:30:06,751 - INFO - Prompt processing progress: 4096/9829"
-        let event = LogEvent.progress(current: 4096, total: 9829, percentage: 41.7)
+        let event = LogEvent.progress(current: 4096, total: 9829, percentage: 41.7, timestamp: Date())
         XCTAssertEqual(LogLineStripper.strip(line, event: event), "4096/9829")
     }
 

@@ -504,7 +504,7 @@ struct StatusBarControllerTests {
         controller.serverDidStart()
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 10, total: 100, percentage: 10.0))
+        state.handle(.progress(current: 10, total: 100, percentage: 10.0, timestamp: Date()))
         controller.update(state: state)
         let titles = view.menuItems.map(\.title)
         #expect(titles.contains("Stop"))
@@ -542,7 +542,7 @@ struct StatusBarControllerTests {
         var state = ServerState()
         state.serverStarted()
         if status == .processing, let c = current, let t = total {
-            state.handle(.progress(current: c, total: t, percentage: (Double(c) / Double(t)) * 100))
+            state.handle(.progress(current: c, total: t, percentage: (Double(c) / Double(t)) * 100, timestamp: Date()))
         }
         return state
     }

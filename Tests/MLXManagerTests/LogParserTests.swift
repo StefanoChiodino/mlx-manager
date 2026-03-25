@@ -9,10 +9,11 @@ final class LogParserTests: XCTestCase {
     func test_parse_progressLine_returnsMidRequestEvent() {
         let line = "2026-03-18 23:33:38,553 - INFO - Prompt processing progress: 4096/41061"
         let result = LogParser.parse(line: line)
-        guard case .progress(let current, let total, let percentage) = result else {
+        guard case .progress(let current, let total, let percentage, let timestamp) = result else {
             XCTFail("Expected .progress, got \(String(describing: result))")
             return
         }
+        XCTAssertNotNil(timestamp)
         XCTAssertEqual(current, 4096)
         XCTAssertEqual(total, 41061)
         XCTAssertEqual(percentage, (4096.0 / 41061.0) * 100, accuracy: 0.01)
@@ -23,10 +24,11 @@ final class LogParserTests: XCTestCase {
     func test_parse_progressNearEnd_returnsEventWithHighPercentage() {
         let line = "2026-03-18 23:34:18,156 - INFO - Prompt processing progress: 41056/41061"
         let result = LogParser.parse(line: line)
-        guard case .progress(let current, let total, let percentage) = result else {
+        guard case .progress(let current, let total, let percentage, let timestamp) = result else {
             XCTFail("Expected .progress, got \(String(describing: result))")
             return
         }
+        XCTAssertNotNil(timestamp)
         XCTAssertEqual(current, 41056)
         XCTAssertEqual(total, 41061)
         XCTAssertEqual(percentage, (41056.0 / 41061.0) * 100, accuracy: 0.01)
@@ -166,7 +168,7 @@ import Testing
 
 @Test("LogLineKind maps progress event")
 func logLineKindMapsProgress() {
-    let kind = LogLineKind(.progress(current: 1, total: 10, percentage: 10.0))
+    let kind = LogLineKind(.progress(current: 1, total: 10, percentage: 10.0, timestamp: Date()))
     #expect(kind == .progress)
 }
 

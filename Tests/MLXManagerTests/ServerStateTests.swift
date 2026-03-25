@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import MLXManager
 
@@ -40,7 +41,7 @@ struct ServerStateTests {
     func serverStoppedFromProcessing() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 100, total: 1000, percentage: 10.0))
+        state.handle(.progress(current: 100, total: 1000, percentage: 10.0, timestamp: Date()))
         state.serverStopped()
         #expect(state.status == .offline)
         #expect(state.progress == nil)
@@ -50,7 +51,7 @@ struct ServerStateTests {
     func serverCrashedFromProcessing() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 100, total: 1000, percentage: 10.0))
+        state.handle(.progress(current: 100, total: 1000, percentage: 10.0, timestamp: Date()))
         state.serverCrashed()
         #expect(state.status == .failed)
         #expect(state.progress == nil)
@@ -62,7 +63,7 @@ struct ServerStateTests {
     func progressTransitionsToProcessing() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97))
+        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97, timestamp: Date()))
         #expect(state.status == .processing)
         #expect(state.progress?.current == 4096)
         #expect(state.progress?.total == 41061)
@@ -75,8 +76,8 @@ struct ServerStateTests {
     func subsequentProgressUpdates() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97))
-        state.handle(.progress(current: 8192, total: 41061, percentage: 19.95))
+        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97, timestamp: Date()))
+        state.handle(.progress(current: 8192, total: 41061, percentage: 19.95, timestamp: Date()))
         #expect(state.status == .processing)
         #expect(state.progress?.current == 8192)
     }
@@ -87,7 +88,7 @@ struct ServerStateTests {
     func nearCompleteStaysProcessing() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 41056, total: 41061, percentage: 99.99))
+        state.handle(.progress(current: 41056, total: 41061, percentage: 99.99, timestamp: Date()))
         #expect(state.status == .processing)
     }
 
@@ -97,7 +98,7 @@ struct ServerStateTests {
     func kvCachesCompletesRequest() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 41056, total: 41061, percentage: 99.99))
+        state.handle(.progress(current: 41056, total: 41061, percentage: 99.99, timestamp: Date()))
         state.handle(.kvCaches(gpuGB: 1.75, tokens: 25724))
         #expect(state.status == .idle)
         #expect(state.progress == nil)
@@ -111,7 +112,7 @@ struct ServerStateTests {
     func httpCompletionCompletesRequest() {
         var state = ServerState()
         state.serverStarted()
-        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97))
+        state.handle(.progress(current: 4096, total: 41061, percentage: 9.97, timestamp: Date()))
         state.handle(.httpCompletion)
         #expect(state.status == .idle)
         #expect(state.progress == nil)
@@ -134,7 +135,7 @@ struct ServerStateTests {
     @Test("Events are ignored while offline")
     func eventsIgnoredWhileOffline() {
         var state = ServerState()
-        state.handle(.progress(current: 100, total: 1000, percentage: 10.0))
+        state.handle(.progress(current: 100, total: 1000, percentage: 10.0, timestamp: Date()))
         #expect(state.status == .offline)
         state.handle(.kvCaches(gpuGB: 1.0, tokens: 500))
         #expect(state.status == .offline)

@@ -15,7 +15,7 @@ public enum LogLineStripper {
     ///   - event: The parsed event for this line, if any.
     public static func strip(_ line: String, event: LogEvent?) -> String {
         switch event {
-        case .progress(let current, let total, _):
+        case .progress(let current, let total, _, _):
             return "\(current)/\(total)"
         case .kvCaches(let gpuGB, let tokens):
             return "\(String(format: "%.2f", gpuGB)) GB · \(tokens) tok"

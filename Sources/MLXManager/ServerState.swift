@@ -55,7 +55,7 @@ public struct ServerState: Equatable {
         guard status != .offline else { return }
 
         switch event {
-        case let .progress(current, total, percentage):
+        case let .progress(current, total, percentage, _):
             if requestStartedAt == nil {
                 requestStartedAt = Date()
             }

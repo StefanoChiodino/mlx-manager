@@ -2,9 +2,24 @@ import Foundation
 
 /// Events that can be extracted from a single MLX server log line.
 public enum LogEvent: Equatable {
-    case progress(current: Int, total: Int, percentage: Double)
+    case progress(current: Int, total: Int, percentage: Double, timestamp: Date)
     case kvCaches(gpuGB: Double, tokens: Int)
     case httpCompletion
+
+    // Equality ignores timestamp so LogTailer tests can compare parsed events
+    // without needing to match the exact capture time.
+    public static func == (lhs: LogEvent, rhs: LogEvent) -> Bool {
+        switch (lhs, rhs) {
+        case let (.progress(lc, lt, lp, _), .progress(rc, rt, rp, _)):
+            return lc == rc && lt == rt && lp == rp
+        case let (.kvCaches(lg, lk), .kvCaches(rg, rk)):
+            return lg == rg && lk == rk
+        case (.httpCompletion, .httpCompletion):
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 public enum LogLineKind: Equatable {
@@ -47,7 +62,8 @@ public enum LogParser {
             return .progress(
                 current: current,
                 total: total,
-                percentage: (Double(current) / Double(total)) * 100
+                percentage: (Double(current) / Double(total)) * 100,
+                timestamp: Date()
             )
         }
 
