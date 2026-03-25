@@ -19,9 +19,28 @@ public enum LogLineStripper {
             return "\(current)/\(total)"
         case .kvCaches(let gpuGB, let tokens):
             return "\(String(format: "%.2f", gpuGB)) GB · \(tokens) tok"
+        case .httpCompletion:
+            return httpCompletionSummary(line)
         default:
             return truncated(stripped(line))
         }
+    }
+
+    // Extracts "POST /completions 200" from the access log line format:
+    // 127.0.0.1 - - [date] "POST /v1/chat/completions HTTP/1.1" 200 -
+    private static let httpSummaryRE = try! NSRegularExpression(
+        pattern: #""(POST|GET|PUT|DELETE|PATCH) (?:.*/)?([\w.]+) HTTP/[\d.]+" (\d{3})"#
+    )
+
+    private static func httpCompletionSummary(_ line: String) -> String {
+        let range = NSRange(line.startIndex..., in: line)
+        guard let m = httpSummaryRE.firstMatch(in: line, range: range),
+              let r1 = Range(m.range(at: 1), in: line),
+              let r2 = Range(m.range(at: 2), in: line),
+              let r3 = Range(m.range(at: 3), in: line) else {
+            return truncated(stripped(line))
+        }
+        return "\(line[r1]) /\(line[r2]) \(line[r3])"
     }
 
     private static func stripped(_ line: String) -> String {

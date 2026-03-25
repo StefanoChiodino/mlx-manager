@@ -149,8 +149,7 @@ final class StatusBarView: StatusBarViewProtocol {
 
         logLabel.font = NSFont.menuBarFont(ofSize: 0)
         logLabel.textColor = NSColor.labelColor
-        logLabel.lineBreakMode = .byTruncatingTail
-        logLabel.cell?.truncatesLastVisibleLine = true
+        logLabel.lineBreakMode = .byClipping
         logLabel.isHidden = true
 
         if let button = statusItem.button {

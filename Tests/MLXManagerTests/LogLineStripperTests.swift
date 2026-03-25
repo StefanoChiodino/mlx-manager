@@ -98,16 +98,12 @@ final class LogLineStripperEventTests: XCTestCase {
         XCTAssertEqual(LogLineStripper.strip(line, event: event), "0.00 GB · 0 tok")
     }
 
-    // MARK: - httpCompletion event (fallthrough to strip+truncate)
+    // MARK: - httpCompletion event (compact summary)
 
-    func test_strip_httpCompletionEvent_truncatesLongRawLine() {
-        // 79-char line, no strippable prefix → truncated at 70 + "…" = 71 chars
+    func test_strip_httpCompletionEvent_returnsCompactSummary() {
         let line = "127.0.0.1 - - [24/Mar/2026 23:29:18] \"POST /v1/chat/completions HTTP/1.1\" 200 -"
-        let event = LogEvent.httpCompletion
-        let result = LogLineStripper.strip(line, event: event)
-        XCTAssertEqual(result.count, 71)
-        XCTAssertTrue(result.hasSuffix("…"))
-        XCTAssertTrue(result.hasPrefix("127.0.0.1"))
+        let result = LogLineStripper.strip(line, event: .httpCompletion)
+        XCTAssertEqual(result, "POST /completions 200")
     }
 
     // MARK: - nil event (existing strip+truncate behaviour preserved)
