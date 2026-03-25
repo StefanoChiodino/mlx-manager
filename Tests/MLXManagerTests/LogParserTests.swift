@@ -34,6 +34,31 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(percentage, (41056.0 / 41061.0) * 100, accuracy: 0.01)
     }
 
+    // MARK: - Timestamp parsing
+
+    /// Spec: Timestamp is parsed from the log line prefix including milliseconds
+    func test_parse_progressLine_returnsTimestamp() {
+        let line = "2026-03-25 10:41:25,583 - INFO - Prompt processing progress: 4096/33242"
+        guard case .progress(_, _, _, let timestamp) = LogParser.parse(line: line) else {
+            XCTFail("Expected .progress event")
+            return
+        }
+        let cal = Calendar.current
+        let components = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: timestamp)
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 3)
+        XCTAssertEqual(components.day, 25)
+        XCTAssertEqual(components.hour, 10)
+        XCTAssertEqual(components.minute, 41)
+        XCTAssertEqual(components.second, 25)
+    }
+
+    /// Spec: Line with unparseable timestamp returns nil
+    func test_parse_progressLine_badTimestamp_returnsNil() {
+        let line = "BADTSTAMP - INFO - Prompt processing progress: 4096/33242"
+        XCTAssertNil(LogParser.parse(line: line))
+    }
+
     /// Spec: Non-progress line → nil when parsing for progress
     func test_parse_kvCachesLine_returnsNilForProgressParser() {
         let line = "2026-03-18 23:34:23,603 - INFO - KV Caches: 4 seq, 1.94 GB, latest user cache 25724 tokens"

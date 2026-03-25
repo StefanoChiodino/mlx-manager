@@ -8,7 +8,7 @@ struct HistoricalLogLoaderTests {
     func parsesLastNLines() {
         let content = """
         some irrelevant line
-        Prompt processing progress: 5/10
+        2026-03-25 10:41:25,583 - INFO - Prompt processing progress: 5/10
         KV Caches: 1 seq, 2.50 GB, latest user cache 100 tokens
         POST /v1/chat/completions HTTP/1.1" 200
         another irrelevant line
@@ -25,7 +25,7 @@ struct HistoricalLogLoaderTests {
     @Test("extracts request records from complete sequences")
     func extractsRequestRecords() {
         let content = """
-        Prompt processing progress: 5/10
+        2026-03-25 10:41:25,583 - INFO - Prompt processing progress: 5/10
         KV Caches: 1 seq, 2.50 GB, latest user cache 100 tokens
         """
         let result = HistoricalLogLoader.load(from: content, maxLines: 100)

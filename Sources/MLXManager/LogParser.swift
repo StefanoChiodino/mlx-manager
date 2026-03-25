@@ -48,6 +48,13 @@ public enum LogParser {
     private static let httpCompletionRE = try! NSRegularExpression(
         pattern: #"POST /v1/chat/completions HTTP/1\.1" 200"#
     )
+    private static let timestampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss,SSS"
+        return f
+    }()
 
     // MARK: - Public API
 
@@ -58,12 +65,13 @@ public enum LogParser {
            let r1 = Range(m.range(at: 1), in: line),
            let r2 = Range(m.range(at: 2), in: line),
            let current = Int(line[r1]),
-           let total = Int(line[r2]) {
+           let total = Int(line[r2]),
+           let timestamp = timestampFormatter.date(from: String(line.prefix(23))) {
             return .progress(
                 current: current,
                 total: total,
                 percentage: (Double(current) / Double(total)) * 100,
-                timestamp: Date()
+                timestamp: timestamp
             )
         }
 
