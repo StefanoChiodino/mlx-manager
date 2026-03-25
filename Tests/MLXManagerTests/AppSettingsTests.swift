@@ -226,4 +226,29 @@ final class AppSettingsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: oldData)
         XCTAssertEqual(decoded.showLastLogLine, false)
     }
+
+    func test_appSettings_showPrefillTPS_defaultsFalse() {
+        let settings = AppSettings()
+        XCTAssertFalse(settings.showPrefillTPS)
+    }
+
+    func test_appSettings_showPrefillTPS_roundTripsJSON() throws {
+        var settings = AppSettings()
+        settings.showPrefillTPS = true
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertTrue(decoded.showPrefillTPS)
+    }
+
+    func test_appSettings_showPrefillTPS_missingKeyDefaultsFalse() throws {
+        // Simulate an old settings file that doesn't have showPrefillTPS
+        let json = """
+        {"ramGraphEnabled":false,"ramPollInterval":5,"startAtLogin":false,
+         "logPath":"~/repos/mlx/Logs/server.log","serverPort":8080,
+         "managedGatewayPort":8080,"progressCompletionThreshold":0,
+         "showLastLogLine":false,"managedGatewayEnabled":false,"pythonPathOverride":""}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
+        XCTAssertFalse(decoded.showPrefillTPS)
+    }
 }

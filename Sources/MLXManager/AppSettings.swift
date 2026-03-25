@@ -18,6 +18,8 @@ public struct AppSettings: Codable, Equatable {
     public var managedGatewayEnabled: Bool = false
     /// Optional global Python override. When empty, the managed backend-specific Python is used.
     public var pythonPathOverride: String = ""
+    /// Show prefill speed (tok/s) in the menu bar status item. Default false.
+    public var showPrefillTPS: Bool = false
 
     public init() {}
 
@@ -32,6 +34,7 @@ public struct AppSettings: Codable, Equatable {
         case showLastLogLine
         case managedGatewayEnabled
         case pythonPathOverride
+        case showPrefillTPS
     }
 
     public init(from decoder: Decoder) throws {
@@ -46,6 +49,7 @@ public struct AppSettings: Codable, Equatable {
         showLastLogLine = try container.decodeIfPresent(Bool.self, forKey: .showLastLogLine) ?? false
         managedGatewayEnabled = try container.decodeIfPresent(Bool.self, forKey: .managedGatewayEnabled) ?? false
         pythonPathOverride = try container.decodeIfPresent(String.self, forKey: .pythonPathOverride) ?? ""
+        showPrefillTPS = try container.decodeIfPresent(Bool.self, forKey: .showPrefillTPS) ?? false
     }
 
     /// Hidden backend port used while the managed gateway owns the public port.
