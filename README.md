@@ -2,6 +2,14 @@
 
 A native macOS menu bar application (Apple Silicon) for managing MLX LLM server instances.
 
+Standby and processing:
+
+![Standby](docs/images/standby.png) | ![Processing](docs/images/processing.png)
+
+Settings:
+
+![Settings](docs/images/settings.png)
+
 ## Development Methodology
 
 This project follows two non-negotiable disciplines — see [AGENTS.md](AGENTS.md) for the full rules:

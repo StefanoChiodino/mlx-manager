@@ -7,3 +7,7 @@ DerivedData/
 .DS_Store
 .superpowers/
 build/.worktrees/
+# Stray screenshot drops at repo root
+/*.png
+/*.jpg
+/*.jpeg
