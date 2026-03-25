@@ -75,7 +75,8 @@ final class SettingsWindowControllerTests: XCTestCase {
     func test_close_appliesPendingServerPortFieldEdit() throws {
         let controller = SettingsWindowController(
             presets: [ServerConfig.fixture()],
-            settings: AppSettings()
+            settings: AppSettings(),
+            saveURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".yaml")
         )
         let field = try XCTUnwrap(reflectedValue(named: "serverPortField", in: controller, as: NSTextField.self))
         var dismissedSettings: AppSettings?
