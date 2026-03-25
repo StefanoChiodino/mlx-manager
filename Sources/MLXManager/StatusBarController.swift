@@ -158,6 +158,11 @@ public final class StatusBarController {
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
+        if settings.showPrefillTPS {
+            view.updateTPS(lastPrefillTPS)
+        } else {
+            view.updateTPS(nil)
+        }
         rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 

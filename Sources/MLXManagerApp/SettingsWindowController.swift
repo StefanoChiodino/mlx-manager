@@ -59,6 +59,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let startAtLoginCheckbox = NSButton(checkboxWithTitle: "Start at login", target: nil, action: nil)
     private let managedGatewayCheckbox = NSButton(checkboxWithTitle: "Enable managed gateway (stable port + default model)", target: nil, action: nil)
     private let showLastLogLineCheckbox = NSButton(checkboxWithTitle: "Show last log line in menu bar", target: nil, action: nil)
+    private let showPrefillTPSCheckbox = NSButton(checkboxWithTitle: "Show prefill speed (tok/s) in menu bar", target: nil, action: nil)
     private let serverPortField = NSTextField()
     private let managedGatewayPortField = NSTextField()
     private let completionThresholdField = NSTextField()
@@ -158,23 +159,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let nameCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("listName"))
         nameCol.title = "Name"
-        nameCol.width = 130
         nameCol.isEditable = false
 
-        let modelCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("listModel"))
-        modelCol.title = "Model"
-        modelCol.width = 130
-        modelCol.isEditable = false
-
-        let backendCol = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("listBackend"))
-        backendCol.title = "Backend"
-        backendCol.width = 55
-        backendCol.isEditable = false
-
         presetListTable.addTableColumn(nameCol)
-        presetListTable.addTableColumn(modelCol)
-        presetListTable.addTableColumn(backendCol)
-        presetListTable.headerView = NSTableHeaderView()
+        presetListTable.headerView = nil
 
         listScrollView.documentView = presetListTable
         listScrollView.hasVerticalScroller = true
@@ -318,7 +306,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             // list on the left
             listScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             listScrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-            listScrollView.widthAnchor.constraint(equalToConstant: 270),
+            listScrollView.widthAnchor.constraint(equalToConstant: 160),
             listScrollView.bottomAnchor.constraint(equalTo: rowButtons.topAnchor, constant: -4),
 
             rowButtons.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -546,6 +534,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         showLastLogLineCheckbox.target = self
         showLastLogLineCheckbox.action = #selector(showLastLogLineToggled)
 
+        showPrefillTPSCheckbox.state = draftSettings.showPrefillTPS ? .on : .off
+        showPrefillTPSCheckbox.target = self
+        showPrefillTPSCheckbox.action = #selector(showPrefillTPSToggled)
+
         let portFormatter = {
             let f = NumberFormatter()
             f.minimum = 1
@@ -597,7 +589,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         networkNote.font = NSFont.systemFont(ofSize: 11)
         networkNote.textColor = .secondaryLabelColor
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 9)
+        let grid = NSGridView(numberOfColumns: 2, rows: 10)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         grid.cell(atColumnIndex: 0, rowIndex: 0).contentView = ramGraphCheckbox
@@ -616,25 +608,33 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         grid.cell(atColumnIndex: 0, rowIndex: 4).contentView = showLastLogLineCheckbox
         grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 4, length: 1))
 
-        grid.cell(atColumnIndex: 0, rowIndex: 5).contentView =
-            NSTextField(labelWithString: "Server port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 5).contentView = serverPortField
+        grid.cell(atColumnIndex: 0, rowIndex: 5).contentView = showPrefillTPSCheckbox
+        grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: 5, length: 1))
 
         grid.cell(atColumnIndex: 0, rowIndex: 6).contentView =
-            NSTextField(labelWithString: "Gateway port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = managedGatewayPortField
+            NSTextField(labelWithString: "Server port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = serverPortField
 
         grid.cell(atColumnIndex: 0, rowIndex: 7).contentView =
-            NSTextField(labelWithString: "Python override:")
-        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = pythonPathOverrideField
+            NSTextField(labelWithString: "Gateway port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = managedGatewayPortField
 
         grid.cell(atColumnIndex: 0, rowIndex: 8).contentView =
+            NSTextField(labelWithString: "Python override:")
+        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = pythonPathOverrideField
+
+        grid.cell(atColumnIndex: 0, rowIndex: 9).contentView =
             NSTextField(labelWithString: "Complete at %:")
-        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = completionThresholdField
+        grid.cell(atColumnIndex: 1, rowIndex: 9).contentView = completionThresholdField
 
         grid.column(at: 0).xPlacement = .trailing
         grid.column(at: 1).xPlacement = .fill
         grid.rowSpacing = 8
+
+        // Merged rows (checkboxes spanning both columns) must override the trailing placement
+        for rowIndex in [0, 2, 3, 4] {
+            grid.cell(atColumnIndex: 0, rowIndex: rowIndex).xPlacement = .leading
+        }
 
         serverPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
         managedGatewayPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
@@ -749,6 +749,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         persistChanges()
     }
 
+    @objc private func showPrefillTPSToggled() {
+        draftSettings.showPrefillTPS = showPrefillTPSCheckbox.state == .on
+        persistChanges()
+    }
+
     @objc private func serverPortChanged(_ sender: NSTextField) {
         draftSettings.serverPort = Int(sender.stringValue) ?? draftSettings.serverPort
         persistChanges()
@@ -833,39 +838,11 @@ extension SettingsWindowController: NSTableViewDataSource, NSTableViewDelegate {
                    row: Int) -> NSView? {
         guard row < draftPresets.count else { return nil }
         let preset = draftPresets[row]
-        let id = tableColumn?.identifier.rawValue ?? ""
 
-        switch id {
-        case "listBackend":
-            let cellView = tableView.makeView(
-                withIdentifier: NSUserInterfaceItemIdentifier("listBackend"), owner: self
-            ) as? NSTableCellView ?? NSTableCellView()
-            if cellView.textField == nil {
-                let tf = NSTextField(labelWithString: "")
-                tf.translatesAutoresizingMaskIntoConstraints = false
-                cellView.addSubview(tf)
-                NSLayoutConstraint.activate([
-                    tf.leadingAnchor.constraint(equalTo: cellView.leadingAnchor),
-                    tf.trailingAnchor.constraint(equalTo: cellView.trailingAnchor),
-                    tf.centerYAnchor.constraint(equalTo: cellView.centerYAnchor)
-                ])
-                cellView.textField = tf
-            }
-            cellView.textField?.stringValue = preset.serverType == .mlxLM ? "LM" : "VLM"
-            return cellView
-
-        default:
-            let field = NSTextField(labelWithString: {
-                switch id {
-                case "listName":  return preset.name
-                case "listModel": return preset.model
-                default:          return ""
-                }
-            }())
-            field.font = NSFont.systemFont(ofSize: 12)
-            field.lineBreakMode = .byTruncatingTail
-            return field
-        }
+        let field = NSTextField(labelWithString: preset.name)
+        field.font = NSFont.systemFont(ofSize: 12)
+        field.lineBreakMode = .byTruncatingTail
+        return field
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {

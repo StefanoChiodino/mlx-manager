@@ -617,6 +617,56 @@ struct StatusBarControllerTests {
         #expect(controller.lastPrefillTPS == nil)
     }
 
+    // MARK: - applySettings TPS wiring
+
+    @Test("applySettings enabling showPrefillTPS calls updateTPS with cached value")
+    func applySettings_enableShowPrefillTPS_callsUpdateTPSWithCachedValue() {
+        let view = MockStatusBarView()
+        var settings = AppSettings()
+        settings.showPrefillTPS = false
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings, fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        view.lastTPSValue = .none   // reset spy
+        var newSettings = settings
+        newSettings.showPrefillTPS = true
+        controller.applySettings(newSettings)
+        if case .some(let tps) = view.lastTPSValue {
+            #expect(tps != nil)
+        } else {
+            Issue.record("updateTPS was never called")
+        }
+    }
+
+    @Test("applySettings disabling showPrefillTPS calls updateTPS(nil)")
+    func applySettings_disableShowPrefillTPS_callsUpdateTPSWithNil() {
+        let view = MockStatusBarView()
+        var settings = AppSettings()
+        settings.showPrefillTPS = true
+        let controller = StatusBarController(view: view, presets: [], onStart: { _ in }, onStop: {}, settings: settings, fileExists: { _ in true })
+        var state = ServerState()
+        state.serverStarted()
+        let t1 = Date()
+        state.handle(.progress(current: 1000, total: 5000, percentage: 20.0, timestamp: t1))
+        state.handle(.progress(current: 2000, total: 5000, percentage: 40.0, timestamp: t1.addingTimeInterval(1.0)))
+        state.handle(.kvCaches(gpuGB: 1.0, tokens: 2000))
+        controller.update(state: state)
+        view.lastTPSValue = .none   // reset spy
+        var newSettings = settings
+        newSettings.showPrefillTPS = false
+        controller.applySettings(newSettings)
+        if case .some(let tps) = view.lastTPSValue {
+            #expect(tps == nil)
+        } else {
+            Issue.record("updateTPS was never called")
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeState(status: ServerStatus, current: Int? = nil, total: Int? = nil) -> ServerState {
