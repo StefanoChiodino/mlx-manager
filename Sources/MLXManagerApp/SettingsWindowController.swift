@@ -60,6 +60,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let managedGatewayCheckbox = NSButton(checkboxWithTitle: "Enable managed gateway (stable port + default model)", target: nil, action: nil)
     private let showLastLogLineCheckbox = NSButton(checkboxWithTitle: "Show last log line in menu bar", target: nil, action: nil)
     private let showPrefillTPSCheckbox = NSButton(checkboxWithTitle: "Show prefill speed (tok/s) in menu bar", target: nil, action: nil)
+    private let autoRestartCheckbox = NSButton(checkboxWithTitle: "Restart server automatically after crash", target: nil, action: nil)
     private let serverPortField = NSTextField()
     private let managedGatewayPortField = NSTextField()
     private let completionThresholdField = NSTextField()
@@ -538,6 +539,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         showPrefillTPSCheckbox.target = self
         showPrefillTPSCheckbox.action = #selector(showPrefillTPSToggled)
 
+        autoRestartCheckbox.state = draftSettings.autoRestartEnabled ? .on : .off
+        autoRestartCheckbox.target = self
+        autoRestartCheckbox.action = #selector(autoRestartToggled)
+
         let portFormatter = {
             let f = NumberFormatter()
             f.minimum = 1
@@ -589,7 +594,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         networkNote.font = NSFont.systemFont(ofSize: 11)
         networkNote.textColor = .secondaryLabelColor
 
-        let grid = NSGridView(numberOfColumns: 2, rows: 10)
+        let grid = NSGridView(numberOfColumns: 2, rows: 11)
         grid.setContentHuggingPriority(.defaultHigh, for: .vertical)
         grid.column(at: 0).xPlacement = .trailing
         grid.column(at: 1).xPlacement = .leading
@@ -604,14 +609,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         grid.cell(atColumnIndex: 1, rowIndex: 3).contentView = managedGatewayCheckbox
         grid.cell(atColumnIndex: 1, rowIndex: 4).contentView = showLastLogLineCheckbox
         grid.cell(atColumnIndex: 1, rowIndex: 5).contentView = showPrefillTPSCheckbox
-        grid.cell(atColumnIndex: 0, rowIndex: 6).contentView = NSTextField(labelWithString: "Server port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = serverPortField
-        grid.cell(atColumnIndex: 0, rowIndex: 7).contentView = NSTextField(labelWithString: "Gateway port:")
-        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = managedGatewayPortField
-        grid.cell(atColumnIndex: 0, rowIndex: 8).contentView = NSTextField(labelWithString: "Python override:")
-        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = pythonPathOverrideField
-        grid.cell(atColumnIndex: 0, rowIndex: 9).contentView = NSTextField(labelWithString: "Complete at %:")
-        grid.cell(atColumnIndex: 1, rowIndex: 9).contentView = completionThresholdField
+        grid.cell(atColumnIndex: 1, rowIndex: 6).contentView = autoRestartCheckbox
+        grid.cell(atColumnIndex: 0, rowIndex: 7).contentView = NSTextField(labelWithString: "Server port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 7).contentView = serverPortField
+        grid.cell(atColumnIndex: 0, rowIndex: 8).contentView = NSTextField(labelWithString: "Gateway port:")
+        grid.cell(atColumnIndex: 1, rowIndex: 8).contentView = managedGatewayPortField
+        grid.cell(atColumnIndex: 0, rowIndex: 9).contentView = NSTextField(labelWithString: "Python override:")
+        grid.cell(atColumnIndex: 1, rowIndex: 9).contentView = pythonPathOverrideField
+        grid.cell(atColumnIndex: 0, rowIndex: 10).contentView = NSTextField(labelWithString: "Complete at %:")
+        grid.cell(atColumnIndex: 1, rowIndex: 10).contentView = completionThresholdField
 
         serverPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
         managedGatewayPortField.widthAnchor.constraint(equalToConstant: 80).isActive = true
@@ -729,6 +735,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     @objc private func showPrefillTPSToggled() {
         draftSettings.showPrefillTPS = showPrefillTPSCheckbox.state == .on
         persistChanges()
+    }
+
+    @objc private func autoRestartToggled() {
+        draftSettings.autoRestartEnabled = autoRestartCheckbox.state == .on
+        onChange?(draftPresets, draftSettings)
     }
 
     @objc private func serverPortChanged(_ sender: NSTextField) {
