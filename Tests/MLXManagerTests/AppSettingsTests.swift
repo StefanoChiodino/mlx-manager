@@ -240,6 +240,30 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertTrue(decoded.showPrefillTPS)
     }
 
+    func test_appSettings_autoRestartEnabled_defaultsTrue() {
+        XCTAssertEqual(AppSettings().autoRestartEnabled, true)
+    }
+
+    func test_appSettings_autoRestartEnabled_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.autoRestartEnabled = false
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.autoRestartEnabled, false)
+    }
+
+    func test_appSettings_autoRestartEnabled_missingKeyDefaultsTrue() throws {
+        let json = """
+        {"ramGraphEnabled":false,"ramPollInterval":5,"startAtLogin":false,
+         "logPath":"~/repos/mlx/Logs/server.log","serverPort":8080,
+         "managedGatewayPort":8080,"progressCompletionThreshold":0,
+         "showLastLogLine":false,"managedGatewayEnabled":false,"pythonPathOverride":"",
+         "showPrefillTPS":false}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
+        XCTAssertTrue(decoded.autoRestartEnabled)
+    }
+
     func test_appSettings_showPrefillTPS_missingKeyDefaultsFalse() throws {
         // Simulate an old settings file that doesn't have showPrefillTPS
         let json = """

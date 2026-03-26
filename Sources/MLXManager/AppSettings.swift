@@ -20,6 +20,8 @@ public struct AppSettings: Codable, Equatable {
     public var pythonPathOverride: String = ""
     /// Show prefill speed (tok/s) in the menu bar status item. Default false.
     public var showPrefillTPS: Bool = false
+    /// Automatically restart the server if it crashes (rate-limited). Default true.
+    public var autoRestartEnabled: Bool = true
 
     public init() {}
 
@@ -35,6 +37,7 @@ public struct AppSettings: Codable, Equatable {
         case managedGatewayEnabled
         case pythonPathOverride
         case showPrefillTPS
+        case autoRestartEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,6 +53,7 @@ public struct AppSettings: Codable, Equatable {
         managedGatewayEnabled = try container.decodeIfPresent(Bool.self, forKey: .managedGatewayEnabled) ?? false
         pythonPathOverride = try container.decodeIfPresent(String.self, forKey: .pythonPathOverride) ?? ""
         showPrefillTPS = try container.decodeIfPresent(Bool.self, forKey: .showPrefillTPS) ?? false
+        autoRestartEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoRestartEnabled) ?? true
     }
 
     /// Hidden backend port used while the managed gateway owns the public port.
