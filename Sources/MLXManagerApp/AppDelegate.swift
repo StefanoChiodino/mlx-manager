@@ -1,6 +1,7 @@
 import AppKit
 import MLXManager
 import os
+import UserNotifications
 
 private let logger = Logger(subsystem: "com.mlx-manager", category: "app")
 
@@ -23,6 +24,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Windows
     private var settingsWindowController: SettingsWindowController?
+
+    // Package update
+    private var updateTimer: Timer?
+    private var notificationTimer: Timer?
+    private lazy var packageChecker: PackageUpdateChecker? = {
+        guard let uvPath = UVLocator().locate() else { return nil }
+        return PackageUpdateChecker(uvPath: uvPath, runner: ProcessCommandRunner())
+    }()
 
     private let settingsURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/mlx-manager/settings.json")
@@ -94,6 +103,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         recoverRunningServer(presets: presets)
         bootstrapEnvironmentIfNeeded(presets: presets)
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        scheduleUpdateCheck()
     }
 
     // MARK: - Environment bootstrap
@@ -146,6 +158,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Server lifecycle
 
     private func startServer(config: ServerConfig) {
+        if settings.restartNeeded {
+            settings.restartNeeded = false
+            saveSettings(settings)
+            statusBarController.applySettings(settings)
+            notificationTimer?.invalidate()
+            notificationTimer = nil
+        }
         let resolvedConfig = config.withPythonPath(settings.resolvedPythonPath(for: config))
         let launchPlan = ServerLaunchPlan.plan(for: resolvedConfig, settings: settings)
         do {
@@ -291,6 +310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.saveSettings(newSettings)
                 self.statusBarController.applySettings(newSettings)
                 self.statusBarController.updatePresets(newPresets)
+                self.scheduleUpdateCheck()
                 self.settingsWindowController = nil
             }
         }
@@ -315,6 +335,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: - Package updates
+
+    private func scheduleUpdateCheck() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+
+        let action = UpdateScheduler.evaluate(
+            interval: settings.updateCheckInterval,
+            lastCheck: settings.lastUpdateCheck,
+            now: Date()
+        )
+
+        switch action {
+        case .checkNow:
+            performUpdateCheck()
+        case .scheduleAfter(let delay):
+            updateTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+                self?.performUpdateCheck()
+            }
+        case .disabled:
+            break
+        }
+    }
+
+    private func performUpdateCheck() {
+        guard let checker = packageChecker else { return }
+
+        DispatchQueue.global(qos: .utility).async {
+            checker.checkForUpdates { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.settings.lastUpdateCheck = Date()
+                    self.saveSettings(self.settings)
+
+                    if result.hasUpdates {
+                        DispatchQueue.global(qos: .utility).async {
+                            checker.upgrade { [weak self] success in
+                                DispatchQueue.main.async {
+                                    guard let self else { return }
+                                    if success && self.serverCoordinator.isRunning {
+                                        self.settings.restartNeeded = true
+                                        self.saveSettings(self.settings)
+                                        self.statusBarController.applySettings(self.settings)
+                                        self.postRestartNotification()
+                                        self.startNotificationTimer()
+                                    }
+                                    self.scheduleUpdateCheck()
+                                }
+                            }
+                        }
+                    } else {
+                        self.scheduleUpdateCheck()
+                    }
+                }
+            }
+        }
+    }
+
+    private func postRestartNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "MLX Manager"
+        content.body = "MLX packages updated — restart server to apply"
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "package-update-restart",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func startNotificationTimer() {
+        notificationTimer?.invalidate()
+        notificationTimer = Timer.scheduledTimer(withTimeInterval: 2 * 3600, repeats: true) { [weak self] _ in
+            guard let self, self.settings.restartNeeded else {
+                self?.notificationTimer?.invalidate()
+                self?.notificationTimer = nil
+                return
+            }
+            self.postRestartNotification()
+        }
     }
 
     // MARK: - Persistence
