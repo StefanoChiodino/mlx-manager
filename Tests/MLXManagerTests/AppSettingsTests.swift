@@ -251,4 +251,52 @@ final class AppSettingsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
         XCTAssertFalse(decoded.showPrefillTPS)
     }
+
+    func test_appSettings_updateCheckInterval_defaultsTo0() {
+        XCTAssertEqual(AppSettings().updateCheckInterval, 0)
+    }
+
+    func test_appSettings_updateCheckInterval_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.updateCheckInterval = 12
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.updateCheckInterval, 12)
+    }
+
+    func test_appSettings_updateCheckInterval_migratesFromOldJSON() throws {
+        let json = """
+        {"ramGraphEnabled":false,"ramPollInterval":5,"startAtLogin":false,
+         "logPath":"~/repos/mlx/Logs/server.log","serverPort":8080,
+         "managedGatewayPort":8080,"progressCompletionThreshold":0,
+         "showLastLogLine":false,"managedGatewayEnabled":false,"pythonPathOverride":"",
+         "showPrefillTPS":false}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
+        XCTAssertEqual(decoded.updateCheckInterval, 0)
+    }
+
+    func test_appSettings_lastUpdateCheck_defaultsToNil() {
+        XCTAssertNil(AppSettings().lastUpdateCheck)
+    }
+
+    func test_appSettings_lastUpdateCheck_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.lastUpdateCheck = Date(timeIntervalSince1970: 1711500000)
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.lastUpdateCheck, s.lastUpdateCheck)
+    }
+
+    func test_appSettings_restartNeeded_defaultsFalse() {
+        XCTAssertEqual(AppSettings().restartNeeded, false)
+    }
+
+    func test_appSettings_restartNeeded_roundTripsJSON() throws {
+        var s = AppSettings()
+        s.restartNeeded = true
+        let data = try JSONEncoder().encode(s)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertEqual(decoded.restartNeeded, true)
+    }
 }

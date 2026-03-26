@@ -20,6 +20,12 @@ public struct AppSettings: Codable, Equatable {
     public var pythonPathOverride: String = ""
     /// Show prefill speed (tok/s) in the menu bar status item. Default false.
     public var showPrefillTPS: Bool = false
+    /// Interval in hours between automatic update checks. 0 = disabled. Default 0.
+    public var updateCheckInterval: Int = 0
+    /// Date of the last update check. Nil if never checked.
+    public var lastUpdateCheck: Date? = nil
+    /// Whether a restart is needed to apply pending updates. Default false.
+    public var restartNeeded: Bool = false
 
     public init() {}
 
@@ -35,6 +41,9 @@ public struct AppSettings: Codable, Equatable {
         case managedGatewayEnabled
         case pythonPathOverride
         case showPrefillTPS
+        case updateCheckInterval
+        case lastUpdateCheck
+        case restartNeeded
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,6 +59,9 @@ public struct AppSettings: Codable, Equatable {
         managedGatewayEnabled = try container.decodeIfPresent(Bool.self, forKey: .managedGatewayEnabled) ?? false
         pythonPathOverride = try container.decodeIfPresent(String.self, forKey: .pythonPathOverride) ?? ""
         showPrefillTPS = try container.decodeIfPresent(Bool.self, forKey: .showPrefillTPS) ?? false
+        updateCheckInterval = try container.decodeIfPresent(Int.self, forKey: .updateCheckInterval) ?? 0
+        lastUpdateCheck = try container.decodeIfPresent(Date.self, forKey: .lastUpdateCheck)
+        restartNeeded = try container.decodeIfPresent(Bool.self, forKey: .restartNeeded) ?? false
     }
 
     /// Hidden backend port used while the managed gateway owns the public port.
