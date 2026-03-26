@@ -667,6 +667,65 @@ struct StatusBarControllerTests {
         }
     }
 
+    // MARK: - restartNeeded menu item
+
+    @Test("Hides restart menu item when restartNeeded is false")
+    func hidesRestartItemWhenNotNeeded() {
+        var settings = AppSettings()
+        settings.restartNeeded = false
+        let view = MockStatusBarView()
+        let controller = StatusBarController(
+            view: view,
+            presets: [],
+            onStart: { _ in },
+            onStop: {},
+            settings: settings
+        )
+
+        controller.serverDidStart()
+
+        let menuTitles = view.menuItems.map(\.title)
+        #expect(!menuTitles.contains("Restart to apply updates"))
+    }
+
+    @Test("Hides restart menu item when server is offline")
+    func hidesRestartItemWhenOffline() {
+        var settings = AppSettings()
+        settings.restartNeeded = true
+        let view = MockStatusBarView()
+        let _ = StatusBarController(
+            view: view,
+            presets: [],
+            onStart: { _ in },
+            onStop: {},
+            settings: settings
+        )
+
+        // Don't call serverDidStart — stays offline
+
+        let menuTitles = view.menuItems.map(\.title)
+        #expect(!menuTitles.contains("Restart to apply updates"))
+    }
+
+    @Test("Shows restart menu item when restartNeeded and server running")
+    func showsRestartItemWhenNeeded() {
+        var settings = AppSettings()
+        settings.restartNeeded = true
+        let view = MockStatusBarView()
+        let controller = StatusBarController(
+            view: view,
+            presets: [],
+            onStart: { _ in },
+            onStop: {},
+            settings: settings
+        )
+
+        controller.serverDidStart()
+
+        let menuTitles = view.menuItems.map(\.title)
+        #expect(menuTitles.contains("Restart to apply updates"))
+    }
+
     // MARK: - Helpers
 
     private func makeState(status: ServerStatus, current: Int? = nil, total: Int? = nil) -> ServerState {

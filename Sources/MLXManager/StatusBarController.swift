@@ -155,6 +155,18 @@ public final class StatusBarController {
         rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 
+    /// Update settings and rebuild menu with current display state.
+    public func updateSettings(_ settings: AppSettings) {
+        currentSettings = settings
+        // Rebuild menu with current state
+        switch lastDisplayState {
+        case .offline: rebuildMenu(statusText: "Server: Offline")
+        case .idle: rebuildMenu(statusText: "Server: Idle")
+        case .processing(let f): rebuildMenu(statusText: "Processing: \(Int(f * 100))%")
+        case .failed: rebuildMenu(statusText: "Server: Failed")
+        }
+    }
+
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings
@@ -174,6 +186,10 @@ public final class StatusBarController {
 
     /// Trigger the stop action.
     public func stopServer() {
+        onStop()
+    }
+
+    private func restartForUpdate() {
         onStop()
     }
 
@@ -210,6 +226,15 @@ public final class StatusBarController {
 
         if let runningServer, lastDisplayState != .offline {
             items.append(StatusBarMenuItem(title: runningServerTitle(for: runningServer), isEnabled: false))
+            items.append(StatusBarMenuItem(title: "-", isSeparator: true))
+        }
+
+        if currentSettings.restartNeeded && isServerRunning {
+            items.append(StatusBarMenuItem(
+                title: "Restart to apply updates",
+                isEnabled: true,
+                action: { [weak self] in self?.restartForUpdate() }
+            ))
             items.append(StatusBarMenuItem(title: "-", isSeparator: true))
         }
 
