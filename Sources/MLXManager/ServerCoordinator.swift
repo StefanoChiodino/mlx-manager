@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.mlx-manager", category: "coordinator")
 
 /// Protocol so LogTailer can be replaced by a mock in tests.
 public protocol LogTailerProtocol {
@@ -94,6 +97,7 @@ public final class ServerCoordinator {
     }
 
     private func handleProcessExit() {
+        logger.warning("server process exited unexpectedly (pid was \(self.pid.map(String.init) ?? "nil", privacy: .public))")
         logTailer?.stop()
         logTailer = nil
         state.serverCrashed()

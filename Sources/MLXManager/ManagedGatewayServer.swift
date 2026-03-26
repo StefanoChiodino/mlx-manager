@@ -1,5 +1,8 @@
 import Foundation
 import Network
+import os
+
+private let logger = Logger(subsystem: "com.mlx-manager", category: "gateway")
 
 /// Errors from the managed gateway listener.
 public enum ManagedGatewayServerError: Error {
@@ -12,6 +15,7 @@ public final class ManagedGatewayServer {
     private let queue = DispatchQueue(label: "com.mlx-manager.gateway")
     private var listener: NWListener?
     private var sessions: [ObjectIdentifier: ManagedGatewayConnectionSession] = [:]
+    private var stopped = false
 
     public var onError: ((Error) -> Void)?
 
@@ -29,26 +33,43 @@ public final class ManagedGatewayServer {
         let listener = try NWListener(using: .tcp, on: port)
         listener.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
-            if case let .failed(error) = state {
+            switch state {
+            case .ready:
+                logger.info("gateway listener ready on port \(routing.publicPort)")
+            case let .failed(error):
+                logger.error("gateway listener failed: \(error)")
                 self.onError?(error)
                 self.stop()
+            case .cancelled:
+                logger.info("gateway listener cancelled")
+            default:
+                break
             }
         }
         listener.newConnectionHandler = { [weak self] connection in
             self?.accept(connection: connection, routing: routing)
         }
         self.listener = listener
+        stopped = false
         listener.start(queue: queue)
     }
 
     public func stop() {
-        listener?.cancel()
-        listener = nil
+        guard !stopped else { return }
+        stopped = true
+        let sessionCount = sessions.count
+        logger.info("gateway stopping — \(sessionCount) active session(s)")
+
+        // Cancel sessions first so their connections are torn down cleanly
+        // before the listener is cancelled.
         let currentSessions = sessions.values
         sessions.removeAll()
         for session in currentSessions {
             session.cancel()
         }
+
+        listener?.cancel()
+        listener = nil
     }
 
     private func accept(connection: NWConnection, routing: ManagedGatewayRouting) {
@@ -57,9 +78,12 @@ public final class ManagedGatewayServer {
             processor: ManagedGatewayRequestProcessor(routing: routing, upstreamClient: upstreamClient),
             queue: queue
         ) { [weak self] session in
-            self?.sessions.removeValue(forKey: ObjectIdentifier(session))
+            let id = ObjectIdentifier(session)
+            self?.sessions.removeValue(forKey: id)
+            logger.debug("gateway session finished, \(self?.sessions.count ?? 0) remaining")
         }
         sessions[ObjectIdentifier(session)] = session
+        logger.debug("gateway session accepted, \(self.sessions.count) active")
         session.start()
     }
 }
@@ -85,6 +109,18 @@ private final class ManagedGatewayConnectionSession {
     }
 
     func start() {
+        connection.stateUpdateHandler = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case let .failed(error):
+                logger.error("gateway connection failed: \(error)")
+                self.finish()
+            case .cancelled:
+                logger.debug("gateway connection cancelled")
+            default:
+                break
+            }
+        }
         connection.start(queue: queue)
         receiveNextChunk()
     }
@@ -101,7 +137,8 @@ private final class ManagedGatewayConnectionSession {
                 self.buffer.append(data)
             }
 
-            if error != nil {
+            if let error {
+                logger.warning("gateway receive error: \(error)")
                 self.sendCurrentBufferAndFinish()
                 return
             }
@@ -125,6 +162,7 @@ private final class ManagedGatewayConnectionSession {
     }
 
     private func sendAndFinish(_ data: Data) async {
+        guard !finished else { return }
         await withCheckedContinuation { continuation in
             connection.send(content: data, completion: .contentProcessed { _ in
                 continuation.resume()
