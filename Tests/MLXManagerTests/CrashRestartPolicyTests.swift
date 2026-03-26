@@ -9,13 +9,13 @@ final class CrashRestartPolicyTests: XCTestCase {
         XCTAssertTrue(allowed)
     }
 
-    func test_recordCrash_thirdCrashDenied() {
+    func test_recordCrash_allowsMaxRestarts_thenDenies() {
         var policy = CrashRestartPolicy(maxRestarts: 3, window: 180)
         let now = Date()
-        XCTAssertTrue(policy.recordCrash(at: now))
-        XCTAssertTrue(policy.recordCrash(at: now.addingTimeInterval(1)))
-        let third = policy.recordCrash(at: now.addingTimeInterval(2))
-        XCTAssertFalse(third)
+        XCTAssertTrue(policy.recordCrash(at: now))                        // 1st — allowed
+        XCTAssertTrue(policy.recordCrash(at: now.addingTimeInterval(1)))   // 2nd — allowed
+        XCTAssertTrue(policy.recordCrash(at: now.addingTimeInterval(2)))   // 3rd — allowed
+        XCTAssertFalse(policy.recordCrash(at: now.addingTimeInterval(3)))  // 4th — denied
     }
 
     func test_recordCrash_oldCrashesEvicted_allowsRestart() {

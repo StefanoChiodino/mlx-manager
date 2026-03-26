@@ -53,9 +53,13 @@ public final class ServerCoordinator {
     }
 
     public func start(config: ServerConfig) throws {
+        try performStart(config: config)
+        crashRestartPolicy.reset()
+    }
+
+    private func performStart(config: ServerConfig) throws {
         try serverManager.start(config: config)
         lastConfig = config
-        crashRestartPolicy.reset()
         state = ServerState()
         state.serverStarted()
         onStateChange?(state)
@@ -128,7 +132,7 @@ public final class ServerCoordinator {
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 do {
-                    try self.start(config: config)
+                    try self.performStart(config: config)
                 } catch {
                     logger.error("auto-restart failed: \(error)")
                     self.onProcessExit?()

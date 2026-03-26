@@ -170,17 +170,20 @@ struct ServerCoordinatorTests {
         coordinator.crashRestartPolicy = CrashRestartPolicy(maxRestarts: 1, window: 180)
         try coordinator.start(config: ServerConfig.fixture())
 
-        // First crash — allowed
-        launcher.exitCallback?()
-
+        var autoRestartCount = 0
         var exhaustedFired = false
         var exitFired = false
+        coordinator.onAutoRestart = { autoRestartCount += 1 }
         coordinator.onRestartExhausted = { exhaustedFired = true }
         coordinator.onProcessExit = { exitFired = true }
 
-        // Second crash — exhausted
+        // First crash — allowed (1 <= 1), triggers auto-restart
         launcher.exitCallback?()
+        #expect(autoRestartCount == 1)
+        #expect(!exhaustedFired)
 
+        // Second crash — exhausted (2 > 1)
+        launcher.exitCallback?()
         #expect(exhaustedFired)
         #expect(exitFired)
     }

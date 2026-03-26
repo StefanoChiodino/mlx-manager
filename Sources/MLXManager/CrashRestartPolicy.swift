@@ -15,7 +15,7 @@ public struct CrashRestartPolicy {
     public mutating func recordCrash(at date: Date = Date()) -> Bool {
         crashTimestamps.append(date)
         crashTimestamps.removeAll { date.timeIntervalSince($0) > window }
-        return crashTimestamps.count < maxRestarts
+        return crashTimestamps.count <= maxRestarts
     }
 
     /// Clear crash history (called on manual start/stop).
