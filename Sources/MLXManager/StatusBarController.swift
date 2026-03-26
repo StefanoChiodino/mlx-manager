@@ -155,18 +155,6 @@ public final class StatusBarController {
         rebuildMenu(statusText: statusText(for: lastDisplayState))
     }
 
-    /// Update settings and rebuild menu with current display state.
-    public func updateSettings(_ settings: AppSettings) {
-        currentSettings = settings
-        // Rebuild menu with current state
-        switch lastDisplayState {
-        case .offline: rebuildMenu(statusText: "Server: Offline")
-        case .idle: rebuildMenu(statusText: "Server: Idle")
-        case .processing(let f): rebuildMenu(statusText: "Processing: \(Int(f * 100))%")
-        case .failed: rebuildMenu(statusText: "Server: Failed")
-        }
-    }
-
     /// Update app settings and rebuild menu (e.g. after settings saved).
     public func applySettings(_ settings: AppSettings) {
         currentSettings = settings

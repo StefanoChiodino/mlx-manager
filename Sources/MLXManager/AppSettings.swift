@@ -26,6 +26,8 @@ public struct AppSettings: Codable, Equatable {
     public var lastUpdateCheck: Date? = nil
     /// Whether a restart is needed to apply pending updates. Default false.
     public var restartNeeded: Bool = false
+    /// Automatically restart the server if it crashes (rate-limited). Default true.
+    public var autoRestartEnabled: Bool = true
 
     public init() {}
 
@@ -44,6 +46,7 @@ public struct AppSettings: Codable, Equatable {
         case updateCheckInterval
         case lastUpdateCheck
         case restartNeeded
+        case autoRestartEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -62,6 +65,7 @@ public struct AppSettings: Codable, Equatable {
         updateCheckInterval = try container.decodeIfPresent(Int.self, forKey: .updateCheckInterval) ?? 0
         lastUpdateCheck = try container.decodeIfPresent(Date.self, forKey: .lastUpdateCheck)
         restartNeeded = try container.decodeIfPresent(Bool.self, forKey: .restartNeeded) ?? false
+        autoRestartEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoRestartEnabled) ?? true
     }
 
     /// Hidden backend port used while the managed gateway owns the public port.

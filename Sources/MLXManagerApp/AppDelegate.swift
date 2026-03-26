@@ -56,6 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
 
+        serverCoordinator.autoRestartEnabled = settings.autoRestartEnabled
+
         serverCoordinator.onStateChange = { [weak self] state in
             guard let self else { return }
             self.statusBarController.update(state: state)
@@ -82,6 +84,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.stopRAMPolling()
             self.stopGateway()
             self.resetSession()
+        }
+
+        serverCoordinator.onAutoRestart = { [weak self] in
+            guard let self else { return }
+            self.stopRAMPolling()
+        }
+
+        serverCoordinator.onRestartExhausted = { [weak self] in
+            guard let self else { return }
+            self.postRestartExhaustedNotification()
         }
 
         let view = StatusBarView()
@@ -293,6 +305,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController.showRAMGraphView(samples: ramSamples)
     }
 
+    private func postRestartExhaustedNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "MLX Server Stopped"
+        content.body = "Server crashed 3 times in 3 minutes. Automatic restart disabled."
+        let request = UNNotificationRequest(identifier: "restart-exhausted", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { logger.error("notification failed: \(error)") }
+        }
+    }
+
     private func showSettings(presets: [ServerConfig]) {
         if settingsWindowController == nil {
             let swc = SettingsWindowController(presets: presets, settings: settings)
@@ -303,6 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.settings = newSettings
                 self.saveSettings(newSettings)
+                self.serverCoordinator.autoRestartEnabled = newSettings.autoRestartEnabled
             }
             swc.onDismiss = { [weak self] newPresets, newSettings, cancelled in
                 guard let self else { return }
