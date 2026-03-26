@@ -22,8 +22,17 @@ public final class ServerCoordinator {
     public var onLogEvent: ((LogEvent, String) -> Void)?
     public var onRequestCompleted: ((RequestRecord) -> Void)?
     public var onProcessExit: (() -> Void)?
+    public var onAutoRestart: (() -> Void)?
+    public var onRestartExhausted: (() -> Void)?
+
+    public var autoRestartEnabled: Bool = true
+    public var restartDelay: TimeInterval = 2.0
+    public var crashRestartPolicy = CrashRestartPolicy()
 
     public private(set) var state: ServerState = ServerState()
+
+    private var lastConfig: ServerConfig?
+    private var pendingRestartWork: DispatchWorkItem?
 
     public var isRunning: Bool { serverManager.isRunning }
     public var pid: Int32? { serverManager.pid }
@@ -45,6 +54,8 @@ public final class ServerCoordinator {
 
     public func start(config: ServerConfig) throws {
         try serverManager.start(config: config)
+        lastConfig = config
+        crashRestartPolicy.reset()
         state = ServerState()
         state.serverStarted()
         onStateChange?(state)
@@ -52,9 +63,13 @@ public final class ServerCoordinator {
     }
 
     public func stop() {
+        pendingRestartWork?.cancel()
+        pendingRestartWork = nil
         logTailer?.stop()
         logTailer = nil
         serverManager.stop()
+        lastConfig = nil
+        crashRestartPolicy.reset()
         state.serverStopped()
         onStateChange?(state)
     }
@@ -102,7 +117,29 @@ public final class ServerCoordinator {
         logTailer = nil
         state.serverCrashed()
         onStateChange?(state)
-        onProcessExit?()
+
+        guard autoRestartEnabled, let config = lastConfig else {
+            onProcessExit?()
+            return
+        }
+
+        if crashRestartPolicy.recordCrash() {
+            onAutoRestart?()
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                do {
+                    try self.start(config: config)
+                } catch {
+                    logger.error("auto-restart failed: \(error)")
+                    self.onProcessExit?()
+                }
+            }
+            pendingRestartWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + restartDelay, execute: work)
+        } else {
+            onProcessExit?()
+            onRestartExhausted?()
+        }
     }
 
     private func rawLine(for event: LogEvent) -> String {

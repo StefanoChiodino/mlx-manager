@@ -98,6 +98,7 @@ struct ServerCoordinatorTests {
     func test_processExit_setsStateToFailed() throws {
         let launcher = MockProcessLauncherForCoordinator()
         let (coordinator, _) = makeCoordinator(launcher: launcher)
+        coordinator.autoRestartEnabled = false
         try coordinator.start(config: ServerConfig.fixture())
 
         var exitFired = false
@@ -119,6 +120,85 @@ struct ServerCoordinatorTests {
         #expect(throws: ServerError.alreadyRunning) {
             try coordinator.start(config: ServerConfig.fixture())
         }
+    }
+
+    @Test("process exit with autoRestart enabled fires onAutoRestart")
+    func test_processExit_autoRestartEnabled_firesOnAutoRestart() throws {
+        let launcher = MockProcessLauncherForCoordinator()
+        let (coordinator, _) = makeCoordinator(launcher: launcher)
+        coordinator.autoRestartEnabled = true
+        coordinator.restartDelay = 0 // no delay in tests
+        try coordinator.start(config: ServerConfig.fixture())
+
+        var autoRestartFired = false
+        var exitFired = false
+        coordinator.onAutoRestart = { autoRestartFired = true }
+        coordinator.onProcessExit = { exitFired = true }
+
+        launcher.exitCallback?()
+
+        #expect(autoRestartFired)
+        #expect(!exitFired)
+    }
+
+    @Test("process exit with autoRestart disabled fires onProcessExit")
+    func test_processExit_autoRestartDisabled_firesOnProcessExit() throws {
+        let launcher = MockProcessLauncherForCoordinator()
+        let (coordinator, _) = makeCoordinator(launcher: launcher)
+        coordinator.autoRestartEnabled = false
+        try coordinator.start(config: ServerConfig.fixture())
+
+        var exitFired = false
+        var autoRestartFired = false
+        coordinator.onProcessExit = { exitFired = true }
+        coordinator.onAutoRestart = { autoRestartFired = true }
+
+        launcher.exitCallback?()
+
+        #expect(exitFired)
+        #expect(!autoRestartFired)
+    }
+
+    @Test("exhausted restart retries fires onRestartExhausted")
+    func test_processExit_exhaustedRetries_firesOnRestartExhausted() throws {
+        let launcher = MockProcessLauncherForCoordinator()
+        let (coordinator, _) = makeCoordinator(launcher: launcher)
+        coordinator.autoRestartEnabled = true
+        coordinator.restartDelay = 0
+
+        // Use a policy with maxRestarts=1 for quick exhaustion
+        coordinator.crashRestartPolicy = CrashRestartPolicy(maxRestarts: 1, window: 180)
+        try coordinator.start(config: ServerConfig.fixture())
+
+        // First crash — allowed
+        launcher.exitCallback?()
+
+        var exhaustedFired = false
+        var exitFired = false
+        coordinator.onRestartExhausted = { exhaustedFired = true }
+        coordinator.onProcessExit = { exitFired = true }
+
+        // Second crash — exhausted
+        launcher.exitCallback?()
+
+        #expect(exhaustedFired)
+        #expect(exitFired)
+    }
+
+    @Test("manual stop resets crash policy")
+    func test_stop_resetsCrashPolicy() throws {
+        let launcher = MockProcessLauncherForCoordinator()
+        let (coordinator, _) = makeCoordinator(launcher: launcher)
+        coordinator.autoRestartEnabled = true
+        coordinator.restartDelay = 0
+        try coordinator.start(config: ServerConfig.fixture())
+
+        // Trigger a crash to populate policy
+        launcher.exitCallback?()
+
+        coordinator.stop()
+
+        #expect(coordinator.crashRestartPolicy.crashTimestamps.isEmpty)
     }
 
     @Test("adopt discovered server preserves recovered runtime details")
