@@ -52,7 +52,16 @@ public enum LogParser {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone.current
+        // Support both with milliseconds (SSS) and without
         f.dateFormat = "yyyy-MM-dd HH:mm:ss,SSS"
+        return f
+    }()
+    
+    private static let timestampFormatterNoMillis: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return f
     }()
 
@@ -65,14 +74,23 @@ public enum LogParser {
            let r1 = Range(m.range(at: 1), in: line),
            let r2 = Range(m.range(at: 2), in: line),
            let current = Int(line[r1]),
-           let total = Int(line[r2]),
-           let timestamp = timestampFormatter.date(from: String(line.prefix(23))) {
-            return .progress(
-                current: current,
-                total: total,
-                percentage: (Double(current) / Double(total)) * 100,
-                timestamp: timestamp
-            )
+           let total = Int(line[r2]) {
+            // Try parsing timestamp with milliseconds first, then without
+            let timestamp: Date? = {
+                if let ts = timestampFormatter.date(from: String(line.prefix(23))) {
+                    return ts
+                }
+                return timestampFormatterNoMillis.date(from: String(line.prefix(20)))
+            }()
+            
+            if let timestamp = timestamp {
+                return .progress(
+                    current: current,
+                    total: total,
+                    percentage: (Double(current) / Double(total)) * 100,
+                    timestamp: timestamp
+                )
+            }
         }
 
         if let m = kvCachesRE.firstMatch(in: line, range: range),
